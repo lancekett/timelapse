@@ -37,7 +37,7 @@ dir=$(dirname "$0")
 mkdir -p capture
 mkdir -p output
 
-while True; do
+while true; do
     timestamp="$(date +%s)"
     curl -# -L --max-time 10 \
         "$url" > "$dir/capture/$timestamp.jpg"

@@ -17,6 +17,10 @@ function help() {
 
 url=
 delay=5
+sunset_hhmm=$(hdate -s -z -8 -l N46.5 -L W123 | grep sunset | awk '{print $2}')
+sunrise_hhmm=$(hdate -s -z -8 -l N46.5 -L W123 | grep sunrise | awk '{print $2}')
+sunrise=$(date -d $sunrise_hhmm +%s)
+sunset=$(date -d $sunset_hhmm +%s)
 
 while getopts "h?u:d:" opt; do
   case "$opt" in
@@ -34,12 +38,28 @@ fi
 
 dir=$(dirname "$0")
 
-mkdir -p capture
-mkdir -p output
-
 while true; do
-    curl -# -L --max-time 10 \
-        "$url" > "$dir/capture/$timestamp.jpg"
+  sunrise=$(date -d $sunrise_hhmm +%s)
+  sunset=$(date -d $sunset_hhmm +%s)
+  hourago=$(date -d '-1 hour' +%s)
+  hourfuture=$(date -d '+1 hour' +%s)
+
+  day=$(date +%F)
   timestamp="$(date +%s)"
+
+  mkdir -p capture-$day
+  mkdir -p output-$day
+
+  if [ $hourfuture -gt $sunrise ] && [ $hourago -lt $sunset ]
+  then
+    curl -L "$url" > "$dir/capture-$day/$timestamp.jpg"
+  else
+    echo "sleeping..."
+    # if $($hourfuture < "24:00") #?? not sure if this works.
+    # then
+    #   touch $dir/capture-$day/done
+    # fi
+  fi
   sleep "$delay"
+
 done

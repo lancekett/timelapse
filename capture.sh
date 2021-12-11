@@ -55,10 +55,8 @@ while true; do
     curl -L "$url" > "$dir/capture-$day/$timestamp.jpg"
   else
     echo "sleeping..."
-    # if $($hourfuture < "24:00") #?? not sure if this works.
-    # then
-    #   touch $dir/capture-$day/done
-    # fi
+    # still curl to keep phone alive, but wait longer.
+    curl --max-time 10 -L "$url" > /dev/null
   fi
   sleep "$delay"
 

@@ -52,12 +52,13 @@ while true; do
 
   if [ $hourfuture -gt $sunrise ] && [ $hourago -lt $sunset ]
   then
-    curl -L "$url" > "$dir/capture-$day/$timestamp.jpg"
+    curl --max-time 10 -L "$url" > "$dir/capture-$day/$timestamp.jpg"
+    sleep "$delay"
   else
     echo "sleeping..."
     # still curl to keep phone alive, but wait longer.
     curl --max-time 10 -L "$url" > /dev/null
+    sleep 120
   fi
-  sleep "$delay"
 
 done

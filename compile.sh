@@ -1,99 +1,78 @@
 #!/bin/bash
 
 function help() {
-    echo "Assemble captured photos into timelapse"
-    echo
-    echo "Options:"
-    echo "-h    Show this help info and quit"
-    echo "-s    Filename slug (default: last photo)"
-    echo "-r    Frame rate (default: 12)"
-    echo "-w    Gif width (default: 320)"
-    echo "-d    Prompt to delete capture files when done (default: false)"
-    echo "-b    Boomerang loop GIF (default: false)"
-    echo
-    echo "Usage:"
-    echo "$0 -h"
-    echo "$0 -s FILENAME_SLUG -r 30 -w 600"
+  echo "Assemble captured photos into timelapse"
+  echo
+  echo "Options:"
+  echo "-h    Show this help info and quit"
+  echo "-s    Filename slug (default: day)"
+  echo "-r    Frame rate (default: 30)"
+  echo "-y    Day to use for compiling in a directory"
+  echo "-d    Prompt to delete capture files when done (default: false)"
+  echo "-f    final run for the day."
+  echo
+  echo "Usage:"
+  echo "$0 -h"
+  echo "$0 -s FILENAME_SLUG -r 30"
 }
 
-slug=$(find capture/*.jpg | tail -n1 | grep -oE '\d+')
-framerate=12
-gif_width=320
+day=$(date +%F)
+hhmm=$(date +%H%M)
+framerate=30
 delete=false
-boomerang=false
+final=false
 
-while getopts "h?s:r:w:db" opt; do
-    case "$opt" in
-        h) help; exit ;;
-        s) slug="$OPTARG" ;;
-        r) framerate="$OPTARG" ;;
-        w) gif_width="$OPTARG" ;;
-        d) delete=true ;;
-        b) boomerang=true ;;
-        *) help; exit ;;
-    esac
+while getopts "h?s:r:y:d:f" opt; do
+  case "$opt" in
+    h) help; exit ;;
+    s) slug="$OPTARG" ;;
+    r) framerate="$OPTARG" ;;
+    y) day="$OPTARG" ;;
+    d) delete=true ;;
+    f) final=true ;;
+    *) help; exit ;;
+  esac
 done
 
+slug="$day"
 dir=$(dirname "$0")
-filename="$dir/output/$slug-$framerate"
 
-mkdir -p output
+mkdir -p output-$day
 
-function gif() {
-    if $boomerang; then
-        _filename="$filename-boomerang"
-    else
-        _filename="$filename"
-    fi
-
-    ffmpeg \
-        -r "$framerate" \
-        -pattern_type glob -i "$dir/capture/*.jpg" \
-        -vf scale="$gif_width:-1" \
-        "$_filename.gif"
-
-    if $boomerang; then
-        convert "$_filename.gif" -coalesce -duplicate 1,-2-1 \
-            -quiet -layers OptimizePlus -loop 0 "$_filename.gif"
-    fi
-
-    if hash gifsicle 2>/dev/null; then
-        gifsicle -O3 --colors 256 < "$_filename.gif" > "$_filename-256.gif"
-        gifsicle -O3 --colors 128 < "$_filename.gif" > "$_filename-128.gif"
-        gifsicle -O3 --colors 64 < "$_filename.gif" > "$_filename-064.gif"
-        gifsicle -O3 --colors 32 < "$_filename.gif" > "$_filename-032.gif"
-    else
-        echo "gifsicle not found. Not running extra compression."
-    fi
-}
+if $final; then
+  filename="$dir/output-$day/$slug-$framerate.mp4"
+else
+  filename="$dir/output-$day/$slug-$framerate-$hhmm.mp4"
+fi
 
 function video() {
-    ffmpeg \
-        -r "$framerate" \
-        -pattern_type glob -i "$dir/capture/*.jpg" \
-        -movflags faststart \
-        -pix_fmt yuv420p \
-        -vb 10000k \
-        "$filename.mp4"
+  ffmpeg \
+    -r "$framerate" \
+    -pattern_type glob -i "$dir/capture-$day/*.jpg" \
+    -movflags faststart \
+    -s:v 1440x1080 \
+    -c:v libx264 \
+    -crf 23 \
+    -pix_fmt yuv420p \
+    "$filename"
 }
 
 function cleanup() {
-    count=$(find capture/*.jpg | wc -l | xargs)
+  count=$(find "capture-$day/*.jpg" | wc -l | xargs)
 
-    echo
-    read -p "All done! Delete $count captured photos? [Y/n] " -n 1 -r
-    echo
+  echo
+  read -p "All done! Delete $count captured photos? [Y/n] " -n 1 -r
+  echo
 
-    if [[ $REPLY =~ ^[Y]$ ]]; then
-        echo "rm capture/*"
-    else
-        exit
-    fi
+  if [[ $REPLY =~ ^[Y]$ ]]; then
+    echo "rm capture-$day/*"
+  else
+    exit
+  fi
 }
 
-gif
 video
 
 if $delete; then
-    cleanup
+  cleanup
 fi

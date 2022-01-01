@@ -41,6 +41,7 @@ mkdir -p output-$day
 
 if $final; then
   filename="$dir/output-$day/$slug-$framerate.mp4"
+  find "capture-$day/" -type f -size 0 -delete
 else
   filename="$dir/output-$day/$slug-$framerate-$hhmm.mp4"
 fi

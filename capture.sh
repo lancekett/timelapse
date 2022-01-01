@@ -17,8 +17,8 @@ function help() {
 
 url=
 delay=5
-sunset_hhmm=$(hdate -s -z -8 -l N46.5 -L W123 | grep sunset | awk '{print $2}')
-sunrise_hhmm=$(hdate -s -z -8 -l N46.5 -L W123 | grep sunrise | awk '{print $2}')
+sunset_hhmm=$(sunwait sun up 46.5N 123W -p | grep rises | awk '{print $6}')
+sunrise_hhmm=$(sunwait sun up 46.5N 123W -p | grep rises | awk '{print $3}')
 sunrise=$(date -d $sunrise_hhmm +%s)
 sunset=$(date -d $sunset_hhmm +%s)
 
@@ -41,8 +41,8 @@ dir=$(dirname "$0")
 while true; do
   sunrise=$(date -d $sunrise_hhmm +%s)
   sunset=$(date -d $sunset_hhmm +%s)
-  hourago=$(date -d '-1 hour' +%s)
-  hourfuture=$(date -d '+1 hour' +%s)
+  hourago=$(date -d '-50 minutes' +%s)
+  hourfuture=$(date -d '+50 minutes' +%s)
 
   day=$(date +%F)
   timestamp="$(date +%s)"

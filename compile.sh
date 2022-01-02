@@ -10,6 +10,7 @@ function help() {
   echo "-y    Day to use for compiling in a directory"
   echo "-d    Prompt to delete capture files when done (default: false)"
   echo "-f    final run for the day."
+  echo "-l    location (directory) for the files"
   echo
   echo "Usage:"
   echo "$0 -h"
@@ -21,27 +22,28 @@ hhmm=$(date +%H%M)
 framerate=30
 delete=false
 final=false
+dir=$(dirname "$0")
 
-while getopts "h?s:r:y:d:f" opt; do
+while getopts "h?s:r:y:d:l:f" opt; do
   case "$opt" in
     h) help; exit ;;
     s) slug="$OPTARG" ;;
     r) framerate="$OPTARG" ;;
     y) day="$OPTARG" ;;
     d) delete=true ;;
+    l) dir="$OPTARG" ;;
     f) final=true ;;
     *) help; exit ;;
   esac
 done
 
 slug="$day"
-dir=$(dirname "$0")
 
-mkdir -p output-$day
+mkdir -p "$dir/output-$day"
 
 if $final; then
   filename="$dir/output-$day/$slug-$framerate.mp4"
-  find "capture-$day/" -type f -size 0 -delete
+  find "$dir/capture-$day/" -type f -size 0 -delete
 else
   filename="$dir/output-$day/$slug-$framerate-$hhmm.mp4"
 fi
@@ -59,14 +61,14 @@ function video() {
 }
 
 function cleanup() {
-  count=$(find "capture-$day/*.jpg" | wc -l | xargs)
+  count=$(find "$dir/capture-$day/*.jpg" | wc -l | xargs)
 
   echo
   read -p "All done! Delete $count captured photos? [Y/n] " -n 1 -r
   echo
 
   if [[ $REPLY =~ ^[Y]$ ]]; then
-    echo "rm capture-$day/*"
+    echo "rm $dir/capture-$day/*"
   else
     exit
   fi

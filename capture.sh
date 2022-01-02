@@ -17,8 +17,8 @@ function help() {
 
 url=
 delay=5
-sunset_hhmm=$(sunwait sun up 46.5N 123W -p | grep rises | awk '{print $6}')
-sunrise_hhmm=$(sunwait sun up 46.5N 123W -p | grep rises | awk '{print $3}')
+sunset_hhmm=$(sunwait list set 46.5N 123W)
+sunrise_hhmm=$(sunwait list rise 46.5N 123W)
 sunrise=$(date -d $sunrise_hhmm +%s)
 sunset=$(date -d $sunset_hhmm +%s)
 

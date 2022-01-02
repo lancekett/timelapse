@@ -21,12 +21,14 @@ sunset_hhmm=$(sunwait list set 46.5N 123W)
 sunrise_hhmm=$(sunwait list rise 46.5N 123W)
 sunrise=$(date -d $sunrise_hhmm +%s)
 sunset=$(date -d $sunset_hhmm +%s)
+dir=$(dirname "$0")
 
-while getopts "h?u:d:" opt; do
+while getopts "h?u:d:l:" opt; do
   case "$opt" in
     h) help; exit ;;
     u) url="$OPTARG" ;;
     d) delay="$OPTARG" ;;
+    l) dir="$OPTARG" ;;
     *) help; exit ;;
   esac
 done
@@ -36,7 +38,6 @@ if [[ -z "$url" ]]; then
   exit 1
 fi
 
-dir=$(dirname "$0")
 
 while true; do
   sunrise=$(date -d $sunrise_hhmm +%s)

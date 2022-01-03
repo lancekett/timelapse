@@ -48,8 +48,8 @@ while true; do
   day=$(date +%F)
   timestamp="$(date +%s)"
 
-  mkdir -p capture-$day
-  mkdir -p output-$day
+  mkdir -p "$dir/capture-$day"
+  mkdir -p "$dir/output-$day"
 
   if [ $hourfuture -gt $sunrise ] && [ $hourago -lt $sunset ]
   then

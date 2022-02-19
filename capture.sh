@@ -42,8 +42,8 @@ fi
 while true; do
   sunrise=$(date -d $sunrise_hhmm +%s)
   sunset=$(date -d $sunset_hhmm +%s)
-  hourago=$(date -d '-50 minutes' +%s)
-  hourfuture=$(date -d '+50 minutes' +%s)
+  hourago=$(date -d '-65 minutes' +%s)
+  hourfuture=$(date -d '+65 minutes' +%s)
 
   day=$(date +%F)
   timestamp="$(date +%s)"

@@ -53,7 +53,7 @@ function video() {
     -r "$framerate" \
     -pattern_type glob -i "$dir/capture-$day/*.jpg" \
     -movflags faststart \
-    -s:v 1440x1080 \
+    -s:v 1920x1080 \
     -c:v libx264 \
     -crf 23 \
     -pix_fmt yuv420p \

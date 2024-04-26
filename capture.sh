@@ -10,15 +10,17 @@ function help() {
   echo
   echo "Usage:"
   echo "$0 -h"
-  echo "$0 -u http://192.168.42.64/photo -d 1"
+  echo "$0 -u http://192.168.42.64/photo -d 4 -l /vol/media/timelapse"
   echo
   echo "Press ctrl+c to quit"
 }
 
 url=
 delay=5
-sunset_hhmm=$(sunwait list set 46.5N 123W)
-sunrise_hhmm=$(sunwait list rise 46.5N 123W)
+# sunset_hhmm=$(sunwait list set 46.5N 123W)
+# sunrise_hhmm=$(sunwait list rise 46.5N 123W)
+sunset_hhmm=$(hdate -s -l N46.5 -L W123 -z-7 2>/dev/null | grep sunset | cut -d' ' -f2)
+sunrise_hhmm=$(hdate -s -l N46.5 -L W123 -z-7 2>/dev/null | grep sunrise | cut -d' ' -f2)
 sunrise=$(date -d $sunrise_hhmm +%s)
 sunset=$(date -d $sunset_hhmm +%s)
 dir=$(dirname "$0")

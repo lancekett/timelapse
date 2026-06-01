@@ -95,13 +95,38 @@ def run_oauth_setup():
         
         # run_local_server will print a authorization URL and listen on a local port.
         # open_browser=True will attempt to launch a local browser.
-        # If running on a headless server, it will fail gracefully and prompt the user in the console.
-        creds = flow.run_local_server(
-            port=0,
-            authorization_prompt_message="Open this URL in a browser on any machine: \n{url}",
-            success_message="Authorization complete! You can close this tab and return to the terminal.",
-            open_browser=True
-        )
+        # If running on a headless server, it will fail with a webbrowser.Error.
+        # We catch that exception and fall back to open_browser=False.
+        try:
+            creds = flow.run_local_server(
+                port=0,
+                authorization_prompt_message="Open this URL in a browser on any machine: \n{url}",
+                success_message="Authorization complete! You can close this tab and return to the terminal.",
+                open_browser=True
+            )
+        except Exception as browser_err:
+            print("\n[INFO] Local browser could not be opened (expected on headless Linux servers).")
+            print("Falling back to headless console mode. The script will start a local redirect server.")
+            print("-" * 60)
+            print("INSTRUCTIONS FOR HEADLESS SERVER AUTHENTICATION:")
+            print("1. Copy the authorization URL printed below and open it in your local PC's browser.")
+            print("2. Log in and grant permissions.")
+            print("3. Your browser will try to redirect to 'http://localhost:PORT/?code=...' and fail.")
+            print("4. This is normal! Since the redirect port is local to this server, you have two options:")
+            print("   Option A (Easiest): Run this setup script on your local Windows PC first,")
+            print("             generate 'token.json' there, and then copy it to your Linux server!")
+            print("   Option B (SSH Tunnel): Note the PORT number in the failed redirect URL.")
+            print("             Open a terminal on your local Windows PC and run this SSH port forward command:")
+            print("             ssh -L PORT:localhost:PORT your_server_username@your_server_ip")
+            print("             Then, refresh the failed browser page on your local PC. It will authorize instantly!")
+            print("-" * 60)
+            
+            creds = flow.run_local_server(
+                port=0,
+                authorization_prompt_message="Open this URL in a browser on any machine: \n{url}",
+                success_message="Authorization complete! You can close this tab and return to the terminal.",
+                open_browser=False
+            )
         
         with open(TOKEN_FILE, "w") as token:
             token.write(creds.to_json())
@@ -113,6 +138,11 @@ def run_oauth_setup():
         
     except Exception as e:
         print(f"\nERROR: OAuth flow failed: {e}")
+        print("\nIf you are stuck, the absolute easiest solution is:")
+        print("1. Put 'client_secrets.json', 'youtube_uploader.py', and 'requirements.txt' on your local Windows PC.")
+        print("2. Run 'pip install -r requirements.txt' and 'python youtube_uploader.py --setup'.")
+        print("3. Complete the login in your browser to generate 'token.json'.")
+        print("4. Copy 'token.json' back to this Linux server directory, and you are ready to go!")
         print("=" * 60)
         return False
 

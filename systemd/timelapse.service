@@ -1,0 +1,20 @@
+[Unit]
+Description=Timelapse Capture and Compiler Daemon
+After=network.target
+
+[Service]
+Type=simple
+# Ensure you set the User to your actual Linux username
+User=your_username
+# Set the path to where you clone/copy this folder on your server
+WorkingDirectory=/home/your_username/timelapse
+# Use the absolute path to your Python interpreter (preferably a venv)
+ExecStart=/home/your_username/timelapse/venv/bin/python timelapse.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=timelapse
+
+[Install]
+WantedBy=multi-user.target

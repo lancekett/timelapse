@@ -1,0 +1,23 @@
+{
+  "camera_url": "http://192.168.1.100/jpg/image.jpg",
+  "interval_seconds": 30,
+  "latitude": 37.7749,
+  "longitude": -122.4194,
+  "sunrise_offset_minutes": -30,
+  "sunset_offset_minutes": 30,
+  "output_dir": "./images",
+  "archive_dir": "./archive",
+  "video_dir": "./videos",
+  "fps": 30,
+  "notifications": {
+    "provider": "ntfy",
+    "ntfy_topic": "lance-timelapse-alerts",
+    "discord_webhook_url": ""
+  },
+  "youtube": {
+    "enabled": false,
+    "privacy_status": "unlisted",
+    "title_template": "Daily Timelapse - {date}",
+    "description_template": "Automated timelapse captured on {date} from {start_time} to {end_time}."
+  }
+}

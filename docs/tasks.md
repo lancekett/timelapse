@@ -1,0 +1,30 @@
+# Timelapse Program Tasks
+
+- `[x]` Project setup and dependencies configuration
+  - `[x]` Create `requirements.txt`
+  - `[x]` Create default `config.json`
+- `[x]` Core Scheduling Module (`scheduler.py`)
+  - `[x]` Implement offline astronomical `Sun` model class
+  - `[x]` Implement recording window calculation with offsets
+  - `[x]` Implement `is_active` check functions
+- `[x]` Compiler & Archival Module (`compiler.py`)
+  - `[x]` Implement finding and sorting daily frames
+  - `[x]` Implement extracting and archiving 60 "noon onwards" frames
+  - `[x]` Implement FFmpeg video rendering via subprocess & concat demuxer
+  - `[x]` Implement file cleanup logic (delete raw, keep archive)
+- `[x]` YouTube Uploader Module (`youtube_uploader.py`)
+  - `[x]` Implement OAuth setup script CLI (`--setup`) to authorize and write `token.json`
+  - `[x]` Implement video upload functions using standard Google API client
+- `[x]` Main Daemon Loop (`timelapse.py`)
+  - `[x]` Implement configuration loading and logging setup
+  - `[x]` Implement dynamic capture scheduler loop
+  - `[x]` Implement HTTP camera frame downloader with retries
+  - `[x]` Implement offline detection and push alerts via ntfy.sh / Discord
+  - `[x]` Implement end-of-day orchestration (triggering compiler, YouTube uploader, and notifications)
+- `[x]` Deployment & Documentation (`README.md` & Systemd)
+  - `[x]` Create `systemd/timelapse.service` template file
+  - `[x]` Write complete setup guide in `README.md`
+- `[x]` Verification and Testing
+  - `[x]` Implement simulated tests for scheduling logic
+  - `[x]` Implement simulated test for image archiver
+  - `[x]` Perform manual end-to-end verification

@@ -105,24 +105,33 @@ def run_oauth_setup():
                 open_browser=True
             )
         except Exception as browser_err:
+            # Dynamically find a free local port to make the instructions extremely precise
+            port = 8080
+            try:
+                import socket
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(('', 0))
+                    port = s.getsockname()[1]
+            except Exception:
+                pass
+
             print("\n[INFO] Local browser could not be opened (expected on headless Linux servers).")
             print("Falling back to headless console mode. The script will start a local redirect server.")
             print("-" * 60)
             print("INSTRUCTIONS FOR HEADLESS SERVER AUTHENTICATION:")
             print("1. Copy the authorization URL printed below and open it in your local PC's browser.")
             print("2. Log in and grant permissions.")
-            print("3. Your browser will try to redirect to 'http://localhost:PORT/?code=...' and fail.")
+            print(f"3. Your browser will try to redirect to 'http://localhost:{port}/?code=...' and fail.")
             print("4. This is normal! Since the redirect port is local to this server, you have two options:")
             print("   Option A (Easiest): Run this setup script on your local Windows PC first,")
             print("             generate 'token.json' there, and then copy it to your Linux server!")
-            print("   Option B (SSH Tunnel): Note the PORT number in the failed redirect URL.")
-            print("             Open a terminal on your local Windows PC and run this SSH port forward command:")
-            print("             ssh -L PORT:localhost:PORT your_server_username@your_server_ip")
+            print("   Option B (SSH Tunnel): Open a terminal on your local Windows PC and run this SSH port forward command:")
+            print(f"             ssh -L {port}:localhost:{port} your_server_username@your_server_ip")
             print("             Then, refresh the failed browser page on your local PC. It will authorize instantly!")
             print("-" * 60)
             
             creds = flow.run_local_server(
-                port=0,
+                port=port,
                 authorization_prompt_message="Open this URL in a browser on any machine: \n{url}",
                 success_message="Authorization complete! You can close this tab and return to the terminal.",
                 open_browser=False

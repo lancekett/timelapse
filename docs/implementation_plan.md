@@ -132,3 +132,33 @@ Comprehensive walkthrough on installation, setting up the Google Cloud Project f
    - Successful rendering of MP4 video.
    - Mobile notification received.
    - YouTube upload initiated.
+
+---
+
+## AI Weather Summary Integration Plan (Gemini API)
+
+This feature adds automatic, intelligent weather summaries to each daily timelapse video by analyzing the compiled `.mp4` video with Google's Gemini Flash model.
+
+### 1. Requirements & Dependencies
+* **Libraries**: Add `google-generativeai` to `requirements.txt`.
+* **API Key**: The user must provide a Gemini API Key from Google AI Studio.
+
+### 2. Configuration Updates (`config.json`)
+Add new settings under a `"gemini"` block:
+```json
+  "gemini": {
+    "enabled": true,
+    "api_key": "YOUR_GEMINI_API_KEY",
+    "model_name": "gemini-2.5-flash"
+  }
+```
+
+### 3. Workflow Steps
+1. **File Upload**: Right after daily video compilation completes successfully, the script uploads the compiled `.mp4` file to Google's Generative AI File API.
+2. **Processing Wait**: The script polls the file status until the video is fully processed and ready (takes a few seconds for short videos).
+3. **Prompt & Generation**: Calls the Gemini API with the video file and the prompt:
+   *"Analyze this timelapse video of a farm and write a single, brief sentence describing the weather progression throughout the day (e.g. 'Cloudy with morning fog, clearing up to sunny conditions in the afternoon')."*
+4. **Cleanup**: Deletes the file from Google's Generative AI File API storage after generation.
+5. **Distribution**:
+   * Appends the weather summary to the YouTube description.
+   * Includes the weather summary directly in the `ntfy` mobile push notification.

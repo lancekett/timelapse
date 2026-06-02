@@ -40,6 +40,12 @@ apps:
     port: 5055
     ip: 192.168.128.46
     configPath: /app/config
+  timelapse:
+    enabled: true
+    image: lancekett/timelapse:latest # Replace with your built image name
+    port: 8000
+    ip: 192.168.128.48 # Choose a free IP in your MetalLB range
+    configPath: /config
 #  wyze-bridge:
 #    enabled: true
 #    image: mrlt8/wyze-bridge:latest

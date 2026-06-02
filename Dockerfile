@@ -13,18 +13,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy source code files
-COPY ai_analyzer.py archive_compiler.py compiler.py dashboard.py scheduler.py timelapse.py youtube_uploader.py ./
+# Copy source code files and config template
+COPY ai_analyzer.py archive_compiler.py compiler.py dashboard.py scheduler.py timelapse.py youtube_uploader.py config.json ./
 
-# Create a data directory for persistent files
-RUN mkdir -p /data
-
-# Set the working directory to /data so all generated files, configurations, 
-# logs, and images are written to the persistent volume mount.
-WORKDIR /data
+# Copy and setup entrypoint script
+COPY entrypoint.sh ./
+RUN chmod +x entrypoint.sh
 
 # Expose dashboard port
 EXPOSE 8000
 
-# Start both dashboard and capture loop
-CMD ["sh", "-c", "python /app/dashboard.py & python /app/timelapse.py"]
+# Set entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]

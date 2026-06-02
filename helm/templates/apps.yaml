@@ -54,6 +54,7 @@ spec:
       containers:
         - name: {{ $name }}
           image: {{ $app.image }}
+          imagePullPolicy: {{ $app.imagePullPolicy | default "IfNotPresent" }}
           env:
             - name: PUID
               value: {{ $.Values.global.puid | quote }}

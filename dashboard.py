@@ -23,9 +23,10 @@ LOG_FILE = "timelapse.log"
 
 
 def get_disk_space():
-    """Returns free, total, used disk space in GB for the current partition."""
+    """Returns free, total, used disk space in GB for the storage partition."""
+    path = "/data" if os.path.exists("/data") else "."
     try:
-        total, used, free = shutil.disk_usage(".")
+        total, used, free = shutil.disk_usage(path)
         return {
             "total_gb": round(total / (1024**3), 1),
             "used_gb": round(used / (1024**3), 1),

@@ -53,10 +53,10 @@ sudo dnf install python3 ffmpeg -y
 ```
 
 ### 2. Clone and Initialize Environment
-Copy the `timelapse` directory to your server (e.g., `/home/your_username/timelapse`), then initialize the virtual environment:
+Copy the `timelapse` directory to your server (e.g., `/home/lance/timelapse`), then initialize the virtual environment:
 
 ```bash
-cd /home/your_username/timelapse
+cd /home/lance/timelapse
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
@@ -149,7 +149,7 @@ Since your Linux server might be headless, you can authorize it in one of two wa
    ```
 4. A local browser window will open. Sign in with your Google account, bypass the "Google hasn't verified this app" warning (click *Advanced* -> *Go to... (unsafe)*), and grant the upload permission.
 5. Once successful, a **`token.json`** file will appear in your folder.
-6. Copy both `client_secrets.json` and **`token.json`** onto your Linux server in the `/home/your_username/timelapse` folder!
+6. Copy both `client_secrets.json` and **`token.json`** onto your Linux server in the `/home/lance/timelapse` folder!
 
 #### Option B: Setup directly on your headless server (via SSH Tunnel)
 1. Activate your virtual environment on your server and run the setup helper:
@@ -215,7 +215,7 @@ python archive_compiler.py --fps 5 --output seasonal_timelapse.mp4
 
 To ensure the script starts automatically when your server boots and recovers from errors:
 
-1. Open `/home/your_username/timelapse/systemd/timelapse.service` and replace `your_username` with your actual Linux user account name.
+1. Open `/home/lance/timelapse/systemd/timelapse.service` and verify that the user and paths match your actual Linux user account name.
 2. Copy the modified service file into systemd's directory:
    ```bash
    sudo cp systemd/timelapse.service /etc/systemd/system/timelapse.service
@@ -261,7 +261,7 @@ If the package versions in [requirements.txt](file:///C:/Users/lance/Documents/a
 
 1. Navigate to the project directory:
    ```bash
-   cd /home/your_username/timelapse
+   cd /home/lance/timelapse
    ```
 2. Activate the virtual environment:
    ```bash

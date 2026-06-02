@@ -63,7 +63,7 @@ We wrote and executed a dedicated verification script ([`test_timelapse.py`](fil
 
 Refer to the complete **[`README.md`](file:///c:/Users/lance/Documents/antigravity/timelapse/README.md)** file for a full walkthrough. Here is the quick-start sequence:
 
-1. **Copy the directory** to your Linux server (e.g. `/home/your_username/timelapse`).
+1. **Copy the directory** to your Linux server (e.g. `/home/lance/timelapse`).
 2. **Setup virtual environment**:
    ```bash
    python3 -m venv venv
@@ -78,7 +78,7 @@ Refer to the complete **[`README.md`](file:///c:/Users/lance/Documents/antigravi
 5. **Start your background service**:
    ```bash
    sudo cp systemd/timelapse.service /etc/systemd/system/timelapse.service
-   # Edit /etc/systemd/system/timelapse.service to replace 'your_username'
+   # Verify user and paths in /etc/systemd/system/timelapse.service
    sudo systemctl daemon-reload
    sudo systemctl enable timelapse.service --now
    ```

@@ -17,11 +17,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ai_analyzer.py archive_compiler.py compiler.py dashboard.py scheduler.py timelapse.py youtube_uploader.py config.json ./
 
 # Copy and setup entrypoint script
-COPY entrypoint.sh ./
-RUN chmod +x entrypoint.sh
+COPY timelapse-entrypoint.sh ./
+RUN chmod +x timelapse-entrypoint.sh
 
 # Expose dashboard port
 EXPOSE 8000
 
 # Set entrypoint
-ENTRYPOINT ["/app/entrypoint.sh"]
+ENTRYPOINT ["/app/timelapse-entrypoint.sh"]

@@ -263,11 +263,22 @@ def main():
                         
                         if comp_success:
                             compilation_done_for_date = today_str
+                            
+                            # Generate AI weather summary
+                            weather_summary = None
+                            try:
+                                from ai_analyzer import analyze_video_weather
+                                weather_summary = analyze_video_weather(video_path)
+                            except Exception as ai_err:
+                                logger.error(f"Failed to generate AI weather summary: {ai_err}")
+                                
                             youtube_cfg = config.get("youtube", {})
                             
                             # Standard notification fields
                             notif_title = "Timelapse Completed 🎥"
                             notif_msg = f"Your daily timelapse for {today_str} has been successfully rendered."
+                            if weather_summary:
+                                notif_msg += f"\n\nWeather: {weather_summary}"
                             
                             # YouTube Upload
                             if youtube_cfg.get("enabled", False):
@@ -283,6 +294,9 @@ def main():
                                     start_time=start_time_str,
                                     end_time=end_time_str
                                 )
+                                if weather_summary:
+                                    yt_desc = f"{weather_summary}\n\n{yt_desc}"
+                                    
                                 privacy = youtube_cfg.get("privacy_status", "unlisted")
                                 
                                 try:

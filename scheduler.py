@@ -114,6 +114,17 @@ class Sun:
         sunrise_local = sunrise_utc.astimezone(tz)
         sunset_local = sunset_utc.astimezone(tz)
         
+        # Adjust for calendar day rollover due to timezone differences
+        if sunrise_local.date() < at_date:
+            sunrise_local += timedelta(days=1)
+        elif sunrise_local.date() > at_date:
+            sunrise_local -= timedelta(days=1)
+
+        if sunset_local.date() < at_date:
+            sunset_local += timedelta(days=1)
+        elif sunset_local.date() > at_date:
+            sunset_local -= timedelta(days=1)
+        
         return sunrise_local, sunset_local
 
 

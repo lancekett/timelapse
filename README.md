@@ -151,20 +151,21 @@ Since your Linux server might be headless, you can authorize it in one of two wa
 5. Once successful, a **`token.json`** file will appear in your folder.
 6. Copy both `client_secrets.json` and **`token.json`** onto your Linux server in the `/home/your_username/timelapse` folder!
 
-#### Option B: Setup directly on your headless server
-1. Activate your virtual environment and run standard setup:
+#### Option B: Setup directly on your headless server (via SSH Tunnel)
+1. Activate your virtual environment on your server and run the setup helper:
    ```bash
    python youtube_uploader.py --setup
    ```
-2. The script will notice it is headless and print a URL:
-   ```text
-   Open this URL in a browser on any machine: 
-   https://accounts.google.com/o/oauth2/auth?...
+2. The script will notice it is headless and dynamically detect a free port (e.g. `8090`). It will print:
+   * A Google authorization URL.
+   * A pre-formatted SSH command matching your active port.
+3. Open a terminal on your local PC (Windows/macOS/Linux) and run the printed SSH tunnel command:
+   ```bash
+   ssh -L 8090:localhost:8090 your_server_username@your_server_ip
    ```
-3. Open that link in a browser on your local computer, select your Google account, and grant permission.
-4. You will be redirected to a page that fails to load (typically `http://localhost:XXXX/?code=...`).
-5. Copy the **full redirect URL** from the browser's address bar.
-6. Paste that full URL back into the terminal prompt on your server. It will parse the code, authenticate, and write `token.json`!
+   *(Be sure to replace the username, IP, and port number placeholders with your actual server credentials and port.)*
+4. Copy the Google authorization URL from the server console, open it in your local PC's browser, and grant permissions.
+5. Once complete, your browser will redirect to `localhost:8090` and the server will instantly capture the token, saving it to `token.json`!
 
 ### 3. Enable in Configuration
 Once `token.json` is created and placed in the project directory, open `config.json` and flip `"enabled"` under `"youtube"` to `true`:

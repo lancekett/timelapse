@@ -17,7 +17,7 @@
   "youtube": {
     "enabled": true,
     "privacy_status": "unlisted",
-    "title_template": "Daily Timelapse - {date}",
+    "title_template": "Farm time-lapse {date}",
     "description_template": "Automated timelapse captured on {date} from {start_time} to {end_time}."
   }
 }

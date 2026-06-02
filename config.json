@@ -1,8 +1,8 @@
 {
-  "camera_url": "http://192.168.1.100/jpg/image.jpg",
-  "interval_seconds": 30,
-  "latitude": 37.7749,
-  "longitude": -122.4194,
+  "camera_url": "http://192.168.129.136:8080/photo.jpg",
+  "interval_seconds": 14,
+  "latitude": 46.52811,
+  "longitude": -123.01069,
   "sunrise_offset_minutes": -30,
   "sunset_offset_minutes": 30,
   "output_dir": "./images",
@@ -11,7 +11,7 @@
   "fps": 30,
   "notifications": {
     "provider": "ntfy",
-    "ntfy_topic": "lance-timelapse-alerts",
+    "ntfy_topic": "lance-timelapse-lwg-6835",
     "discord_webhook_url": ""
   },
   "youtube": {

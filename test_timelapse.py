@@ -21,15 +21,7 @@ class TestTimelapseScheduler(unittest.TestCase):
         test_date = datetime(2026, 6, 1).date()
         
         # Simulated Pacific Daylight Time (UTC -7)
-        class PDT(timezone):
-            def utcoffset(self, dt):
-                return timedelta(hours=-7)
-            def tzname(self, dt):
-                return "PDT"
-            def dst(self, dt):
-                return timedelta(hours=1)
-                
-        tz_pdt = PDT(timedelta(hours=-7))
+        tz_pdt = timezone(timedelta(hours=-7), name="PDT")
         
         sun = Sun(lat, lon)
         sunrise, sunset = sun.get_sunrise_sunset(test_date, tz_pdt)
@@ -58,12 +50,9 @@ class TestTimelapseScheduler(unittest.TestCase):
             sunrise_offset_mins=-30,  # 30 mins before
             sunset_offset_mins=45     # 45 mins after
         )
-        
         test_date = datetime(2026, 6, 1).date()
-        class PDT(timezone):
-            def utcoffset(self, dt):
-                return timedelta(hours=-7)
-        tz_pdt = PDT(timedelta(hours=-7))
+        # Simulated Pacific Daylight Time (UTC -7)
+        tz_pdt = timezone(timedelta(hours=-7), name="PDT")
         
         start_dt, end_dt = scheduler.get_capture_window(test_date, tz_pdt)
         

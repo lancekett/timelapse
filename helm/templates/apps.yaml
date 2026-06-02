@@ -1,0 +1,83 @@
+{{- range $name, $app := .Values.apps }}
+{{- if $app.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $name }}
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: {{ $app.ip | quote }}
+    metallb.io/loadBalancerIPs: {{ $app.ip | quote }}
+spec:
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ $app.port }}
+    {{- if $app.extraPorts }}
+    {{- range $ep := $app.extraPorts }}
+    - name: {{ $ep.name }}
+      port: {{ $ep.port }}
+      targetPort: {{ $ep.port }}
+      protocol: {{ $ep.protocol | default "TCP" }}
+    {{- end }}
+    {{- end }}
+  selector:
+    app: {{ $name }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $name }}-config-pvc
+spec:
+  storageClassName: local-path
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests:
+      # Use provided configSize or default to 5Gi
+      storage: {{ $app.configSize | default "5Gi" }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ $name }}
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}
+    spec:
+      containers:
+        - name: {{ $name }}
+          image: {{ $app.image }}
+          env:
+            - name: PUID
+              value: {{ $.Values.global.puid | quote }}
+            - name: PGID
+              value: {{ $.Values.global.pgid | quote }}
+          ports:
+            - containerPort: {{ $app.port }}
+            {{- if $app.extraPorts }}
+            {{- range $ep := $app.extraPorts }}
+            - containerPort: {{ $ep.port }}
+              protocol: {{ $ep.protocol | default "TCP" }}
+            {{- end }}
+            {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: {{ $app.configPath | default "/config" }}
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ $name }}-config-pvc
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ $.Values.global.nfsPvcName }}
+{{- end }}
+{{- end }}

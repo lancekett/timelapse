@@ -1,0 +1,6 @@
+apiVersion: v2
+name: media-center
+description: A Helm chart for Prowlarr, Radarr, Sonarr, and friends
+type: application
+version: 0.1.1
+appVersion: "1.0.0"

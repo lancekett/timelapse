@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: media-nfs-pv
+spec:
+  capacity:
+    storage: 10Ti # This doesn't limit the NAS, it just tells K8s how big it is
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: "" # Keep this empty to bind manually
+  nfs:
+    server: 192.168.128.17
+    path: /mnt/media/data  # Point this to the ROOT of your media folder
+
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-nfs-claim
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: "" # Must match the PV
+  resources:
+    requests:
+      storage: 10Ti
+#   volumeName: media-usb-pv # Explicitly link to the PV above    

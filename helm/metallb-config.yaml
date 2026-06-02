@@ -1,0 +1,18 @@
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata:
+  name: first-pool
+  namespace: default
+spec:
+  addresses:
+  - 192.168.128.40-192.168.128.60 # <--- Change this to your local network range
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata:
+  name: advertisement
+  namespace: default
+spec:
+  ipAddressPools:
+  - first-pool
+

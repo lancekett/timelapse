@@ -1,0 +1,79 @@
+# Global settings
+global: 
+  timezone: "America/Los_Angeles"
+  puid: "1000"
+  pgid: "1000"
+  nfsPvcName: "media-nfs-claim"
+
+apps:
+  prowlarr:
+    enabled: true
+    image: lscr.io/linuxserver/prowlarr:latest
+    port: 9696
+    ip: 192.168.128.40
+  radarr:
+    enabled: true
+    image: lscr.io/linuxserver/radarr:latest
+    port: 7878
+    ip: 192.168.128.41
+  sonarr:
+    enabled: true
+    image: lscr.io/linuxserver/sonarr:latest
+    port: 8989
+    ip: 192.168.128.43
+  qbittorrent:
+    enabled: true
+    image: lscr.io/linuxserver/qbittorrent:latest
+    port: 8080
+    ip: 192.168.128.44
+    extraPorts:
+      - { name: p2p-tcp, port: 6881, protocol: TCP }
+      - { name: p2p-udp, port: 6881, protocol: UDP }
+  sabnzbd:
+    enabled: true
+    image: lscr.io/linuxserver/sabnzbd:latest
+    port: 8080
+    ip: 192.168.128.45
+  seerr: 
+    enabled: true
+    image: ghcr.io/seerr-team/seerr:latest    
+    port: 5055
+    ip: 192.168.128.46
+    configPath: /app/config
+#  wyze-bridge:
+#    enabled: true
+#    image: mrlt8/wyze-bridge:latest
+#    port: 5000 # Default WebUI Port
+#    ip: 192.168.128.47
+#    configPath: /tokens # Wyze bridge uses /tokens for persistent login data
+#    extraPorts:
+#      - port: 8554
+#        name: rtsp
+#        protocol: TCP
+#      - port: 8888
+#        name: hls
+#        protocol: TCP
+#      - port: 8889
+#        name: webrtc
+#        protocol: TCP
+#    env:
+#      - name: WYZE_EMAIL
+#        value: "lwkett@gmail.com"
+#      - name: WYZE_PASSWORD
+#        value: "Wp2GyntPPJQqXNRrLgyE_"
+#      - name: API_ID
+#        value: "86caf6d2-e53c-40e2-9e66-3d9c892fe5d5"
+#      - name: API_KEY
+#        value: "KTw7Q33dg8lAKxm1XdaylIKkXrStEAdgtHC1qAwbZrYFLE02yx4bbSJx7lTW"
+#      - name: WB_AUTH
+#        value: "false"
+#      - name: NET_MODE
+#        value: "RELAY"
+#      - name: FORCE_FFMPEG
+#        value: "true"
+#      - name: ENABLE_AUDIO
+#        value: "false"
+#      - name: LOG_LEVEL
+#        value: "debug"
+#      - name: WYZE_AUTH
+#        value: "web"

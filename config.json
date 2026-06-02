@@ -15,7 +15,7 @@
     "discord_webhook_url": ""
   },
   "youtube": {
-    "enabled": false,
+    "enabled": true,
     "privacy_status": "unlisted",
     "title_template": "Daily Timelapse - {date}",
     "description_template": "Automated timelapse captured on {date} from {start_time} to {end_time}."

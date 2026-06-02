@@ -6,6 +6,9 @@ TAG="1.0"
 IMAGE_NAME="localhost/lancekett/timelapse:${TAG}"
 TAR_PATH="/tmp/timelapse.tar"
 
+# Clean up any existing image tarball to prevent Podman save errors
+rm -f ${TAR_PATH}
+
 echo "============================================="
 echo "🛠️  1. Building & Saving Container Image..."
 echo "============================================="

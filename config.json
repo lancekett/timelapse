@@ -5,9 +5,9 @@
   "longitude": -123.01069,
   "sunrise_offset_minutes": -30,
   "sunset_offset_minutes": 30,
-  "output_dir": "./images",
-  "archive_dir": "./archive",
-  "video_dir": "./videos",
+  "output_dir": "/data/timelapse/images",
+  "archive_dir": "/data/timelapse/archive",
+  "video_dir": "/data/timelapse/videos",
   "fps": 30,
   "notifications": {
     "provider": "ntfy",

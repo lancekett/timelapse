@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: timelapse-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: timelapse
+  labels:
+    app: timelapse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: timelapse
+  # Since it uses a ReadWriteOnce volume, use Recreate strategy to avoid volume conflicts during updates
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: timelapse
+    spec:
+      containers:
+      - name: timelapse-app
+        # Make sure to tag your built image as: timelapse:latest
+        image: timelapse:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http-dashboard
+        volumeMounts:
+        - name: data-volume
+          mountPath: /data
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: timelapse-data
+        # ALTERNATIVE (Uncomment below to use host path instead of PVC for direct host file access):
+        # hostPath:
+        #   path: /home/lance/timelapse/data
+        #   type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: timelapse-dashboard
+spec:
+  # k3s comes with a built-in LoadBalancer provider (Klipper) out of the box,
+  # which will expose the dashboard on a free IP on your local network.
+  type: LoadBalancer
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: timelapse

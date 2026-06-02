@@ -145,3 +145,4 @@ client_secrets.json
 youtube_oauth_token.json
 token.json
 gemini_key.txt
+status.json

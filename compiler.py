@@ -142,12 +142,23 @@ def process_end_of_day(day_dir, archive_dir, video_dir, target_date_str, fps=30)
     1. Archives midday frames.
     2. Compiles daily video.
     3. Deletes raw folder if compilation succeeded.
-    Returns: (success, video_path)
+    Returns: (success, video_path, first_archive_frame_path, total_frames)
     """
     logger.info(f"Starting end-of-day processing for {target_date_str}...")
     
+    # 0. Count raw frames before deletion
+    total_frames = 0
+    if os.path.exists(day_dir):
+        try:
+            total_frames = len([f for f in os.listdir(day_dir) if f.lower().endswith((".jpg", ".png"))])
+        except Exception as e:
+            logger.error(f"Failed to count raw frames in {day_dir}: {e}")
+            
     # 1. Archive midday frames first
-    archive_midday_frames(day_dir, archive_dir, target_date_str)
+    archived_frames = archive_midday_frames(day_dir, archive_dir, target_date_str)
+    first_archive_frame_path = None
+    if archived_frames:
+        first_archive_frame_path = os.path.abspath(os.path.join(archive_dir, target_date_str, archived_frames[0]))
     
     # 2. Compile video
     os.makedirs(video_dir, exist_ok=True)
@@ -171,4 +182,4 @@ def process_end_of_day(day_dir, archive_dir, video_dir, target_date_str, fps=30)
     else:
         logger.error(f"Compilation failed for {target_date_str}. Keeping raw frames for troubleshooting.")
         
-    return success, video_path
+    return success, video_path, first_archive_frame_path, total_frames

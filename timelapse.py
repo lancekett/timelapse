@@ -65,9 +65,21 @@ def load_config():
         return None
 
 
-def send_notification(config, message, title=None, tags=None):
+def update_status_file(status_dict):
+    """
+    Write current daemon state to a status.json file for the dashboard.
+    """
+    try:
+        with open("status.json", "w", encoding="utf-8") as f:
+            json.dump(status_dict, f, indent=2)
+    except Exception as e:
+        logger.error(f"Failed to write status.json: {e}")
+
+
+def send_notification(config, message, title=None, tags=None, attachment_path=None):
     """
     Send push notification using the configured provider (ntfy or Discord).
+    Optionally attaches a local file.
     """
     notif_cfg = config.get("notifications", {})
     provider = notif_cfg.get("provider", "ntfy").lower()
@@ -79,11 +91,38 @@ def send_notification(config, message, title=None, tags=None):
             return False
             
         url = f"https://ntfy.sh/{topic}"
-        req = urllib.request.Request(url, data=message.encode("utf-8"))
-        if title:
-            req.add_header("Title", title.encode("utf-8"))
-        if tags:
-            req.add_header("Tags", tags.encode("utf-8"))
+        
+        # If we have a local attachment path, we upload it as the payload body
+        if attachment_path and os.path.exists(attachment_path):
+            try:
+                with open(attachment_path, "rb") as f:
+                    image_bytes = f.read()
+                
+                req = urllib.request.Request(url, data=image_bytes)
+                req.add_header("X-Filename", os.path.basename(attachment_path))
+                
+                # In ntfy, when sending attachment via POST body, title/message/tags
+                # should be sent as headers
+                if title:
+                    req.add_header("X-Title", title.encode("utf-8"))
+                if message:
+                    req.add_header("X-Message", message.encode("utf-8"))
+                if tags:
+                    req.add_header("X-Tags", tags.encode("utf-8"))
+            except Exception as e:
+                logger.error(f"Failed to prepare ntfy attachment: {e}")
+                # Fall back to standard request
+                req = urllib.request.Request(url, data=message.encode("utf-8"))
+                if title:
+                    req.add_header("Title", title.encode("utf-8"))
+                if tags:
+                    req.add_header("Tags", tags.encode("utf-8"))
+        else:
+            req = urllib.request.Request(url, data=message.encode("utf-8"))
+            if title:
+                req.add_header("Title", title.encode("utf-8"))
+            if tags:
+                req.add_header("Tags", tags.encode("utf-8"))
             
         try:
             with urllib.request.urlopen(req, timeout=10) as response:
@@ -194,6 +233,18 @@ def main():
             today_str = now.strftime("%Y-%m-%d")
             active, start_dt, end_dt = scheduler.is_active(now)
             
+            # Write daemon status for dashboard
+            update_status_file({
+                "pid": os.getpid(),
+                "last_check": now.strftime("%Y-%m-%d %H:%M:%S"),
+                "active_window": active,
+                "start_time": start_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "end_time": end_dt.strftime("%Y-%m-%d %H:%M:%S"),
+                "camera_is_offline": camera_is_offline,
+                "consecutive_failures": consecutive_failures,
+                "compilation_done_for_date": compilation_done_for_date
+            })
+            
             if active:
                 # We are in the capture window!
                 # 1. Create daily folder
@@ -253,7 +304,7 @@ def main():
                         logger.info(f"Capture window ended. Starting compilation for {today_str}...")
                         
                         # Trigger compilation & archival
-                        comp_success, video_path = process_end_of_day(
+                        comp_success, video_path, first_archive_frame_path, total_frames = process_end_of_day(
                             day_dir=day_dir,
                             archive_dir=archive_dir,
                             video_dir=video_dir,
@@ -280,13 +331,28 @@ def main():
                             if weather_summary:
                                 notif_msg += f"\n\nWeather: {weather_summary}"
                             
+                            # Compile Rich stats
+                            start_time_str = start_dt.strftime("%I:%M %p")
+                            end_time_str = end_dt.strftime("%I:%M %p")
+                            duration_seconds = int(total_frames / fps) if fps > 0 else 0
+                            duration_str = f"{duration_seconds // 60}m {duration_seconds % 60}s" if duration_seconds >= 60 else f"{duration_seconds}s"
+                            
+                            stats_block = (
+                                f"\n\n--- 📊 Capture Statistics ---\n"
+                                f"• Date: {today_str}\n"
+                                f"• Capture Window: {start_time_str} to {end_time_str}\n"
+                                f"• Capture Interval: {interval_seconds}s\n"
+                                f"• Total Frames: {total_frames}\n"
+                                f"• Playback Speed: {fps} FPS\n"
+                                f"• Video Length: {duration_str}"
+                            )
+                            
+                            # Add stats to notification message
+                            notif_msg += stats_block
+                            
                             # YouTube Upload
                             if youtube_cfg.get("enabled", False):
                                 logger.info("YouTube upload is enabled. Starting upload...")
-                                
-                                # Format templates
-                                start_time_str = start_dt.strftime("%I:%M %p")
-                                end_time_str = end_dt.strftime("%I:%M %p")
                                 
                                 yt_title = youtube_cfg.get("title_template", "Timelapse {date}").format(date=today_str)
                                 yt_desc = youtube_cfg.get("description_template", "Timelapse").format(
@@ -294,36 +360,42 @@ def main():
                                     start_time=start_time_str,
                                     end_time=end_time_str
                                 )
+                                
+                                # Format rich description for YouTube
+                                full_yt_desc = ""
                                 if weather_summary:
-                                    yt_desc = f"{weather_summary}\n\n{yt_desc}"
-                                    
+                                    full_yt_desc += f"{weather_summary}\n\n"
+                                full_yt_desc += f"{yt_desc}\n"
+                                full_yt_desc += stats_block
+                                
                                 privacy = youtube_cfg.get("privacy_status", "unlisted")
                                 
                                 try:
                                     upload_res = youtube_uploader.upload_video(
                                         file_path=video_path,
                                         title=yt_title,
-                                        description=yt_desc,
+                                        description=full_yt_desc,
                                         privacy_status=privacy
                                     )
                                     
                                     if upload_res:
                                         video_id, video_url = upload_res
-                                        notif_msg += f"\nUploaded to YouTube ({privacy}): {video_url}"
+                                        notif_msg += f"\n\n🔗 Watch on YouTube: {video_url}"
                                     else:
-                                        notif_msg += "\nFailed to upload to YouTube. Credentials error or API quota limit reached. Video saved on server."
+                                        notif_msg += "\n\n⚠️ Failed to upload to YouTube. Video saved on server."
                                 except Exception as e:
                                     logger.error(f"YouTube upload error: {e}")
-                                    notif_msg += f"\nError uploading to YouTube: {e}. Video saved on server."
+                                    notif_msg += f"\n\n⚠️ Error uploading to YouTube: {e}. Video saved on server."
                             else:
-                                notif_msg += f"\nYouTube upload disabled. Video saved locally at: {video_path}"
+                                notif_msg += f"\n\n💾 YouTube upload disabled. Video saved locally at: {video_path}"
                                 
-                            # Send final push notification
+                            # Send final push notification with embedded first archived frame image
                             send_notification(
                                 config,
                                 message=notif_msg,
                                 title=notif_title,
-                                tags="clapper,video_camera"
+                                tags="clapper,video_camera",
+                                attachment_path=first_archive_frame_path
                             )
                         else:
                             # Compilation failed

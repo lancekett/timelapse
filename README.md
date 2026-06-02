@@ -178,6 +178,39 @@ Once `token.json` is created and placed in the project directory, open `config.j
 
 ---
 
+## 🖥️ Local Web Dashboard & Monitoring
+
+The program includes a built-in, lightweight web dashboard to monitor the status of your daemon, check camera feeds, reload settings, and inspect logs.
+
+1. Start the dashboard server:
+   ```bash
+   python dashboard.py
+   ```
+2. Open your web browser and navigate to:
+   * **Locally**: `http://localhost:8000`
+   * **Local Network**: `http://<your_server_ip>:8000`
+
+The dashboard will display:
+* Real-time camera preview (refreshes automatically).
+* Online/offline status of both the daemon and the camera.
+* Key recording statistics (sunrise/sunset capture window, storage capacity).
+* Live daemon logs inside an embedded scrollable terminal.
+* Settings panel to update offsets, interval times, and GPS coordinates without editing JSON.
+
+---
+
+## 📅 Seasonal Mega-Timelapse Compiler
+
+A dedicated script compiles the midday snapshots you archive over days, weeks, or months into a single seasonal timelapse video.
+
+To compile a mega-timelapse:
+```bash
+python archive_compiler.py --fps 5 --output seasonal_timelapse.mp4
+```
+* **How it works**: It pulls the first JPEG from each archived day folder (`./archive/YYYY-MM-DD/`) in chronological order and compiles them at your target frame rate, creating a flicker-free visual transition of seasons.
+
+---
+
 ## 🚀 Deploying as a Background Linux Service
 
 To ensure the script starts automatically when your server boots and recovers from errors:
@@ -221,6 +254,28 @@ Stop the service:
 ```bash
 sudo systemctl stop timelapse.service
 ```
+
+### 🔄 Updating Dependencies
+
+If the package versions in [requirements.txt](file:///C:/Users/lance/Documents/antigravity/timelapse/requirements.txt) are updated or increased, you should install the updates in the virtual environment and restart the background daemon:
+
+1. Navigate to the project directory:
+   ```bash
+   cd /home/your_username/timelapse
+   ```
+2. Activate the virtual environment:
+   ```bash
+   source venv/bin/activate
+   ```
+3. Install the updated requirements:
+   ```bash
+   pip install --upgrade pip
+   pip install -r requirements.txt --upgrade
+   ```
+4. Restart the background service to load the updated libraries:
+   ```bash
+   sudo systemctl restart timelapse.service
+   ```
 
 ---
 

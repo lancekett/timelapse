@@ -289,6 +289,51 @@ If the package versions in [requirements.txt](file:///C:/Users/lance/Documents/a
 
 ---
 
+## ☸️ Kubernetes (k3s) & Helm Deployment
+
+For containerized deployment inside a `k3s` environment, a [Dockerfile](file:///mnt/c/Users/lance/Documents/antigravity/timelapse/Dockerfile) and a [helm/](file:///mnt/c/Users/lance/Documents/antigravity/timelapse/helm) chart are provided.
+
+### 1. Build and Import the Image
+Build the image and import it into containerd's Kubernetes namespace (`k8s.io`):
+```bash
+# Build the image using Podman or Docker
+sudo podman build -t localhost/lancekett/timelapse:1.0 .
+sudo podman save localhost/lancekett/timelapse:1.0 -o /tmp/timelapse.tar
+
+# Import into the correct k3s namespace
+sudo k3s ctr -n k8s.io images import /tmp/timelapse.tar
+```
+
+### 2. Deploy/Upgrade Helm Chart
+Deploy the application alongside your other media apps:
+```bash
+helm upgrade --install media-center ./helm
+```
+
+### 3. Copy Credentials & Configuration
+Since API keys and tokens are ignored in git, copy them to the persistent `/config` PVC directory:
+1. Find the volume name of your PVC:
+   ```bash
+   kubectl get pvc timelapse-config-pvc
+   ```
+2. Locate the folder on your host:
+   `/var/lib/rancher/k3s/storage/<VOLUME_NAME>_default_timelapse-config-pvc/`
+3. Copy your `token.json`, `client_secrets.json`, and `gemini_key.txt` into that directory.
+
+### 4. Direct Large Media Files to your NAS
+By default, the capture loop writes to `./images`, `./archive`, and `./videos` in the local `/config` PVC. To save storage space on your local node, edit `/config/config.json` inside the PVC to point files to your mounted NFS NAS share:
+```json
+  "output_dir": "/data/timelapse/images",
+  "archive_dir": "/data/timelapse/archive",
+  "video_dir": "/data/timelapse/videos"
+```
+Then restart the pod to apply the changes:
+```bash
+kubectl rollout restart deployment/timelapse
+```
+
+---
+
 ## 📁 Storage Archiving Details
 
 The program operates with storage conservation in mind:

@@ -60,6 +60,10 @@ spec:
               value: {{ $.Values.global.puid | quote }}
             - name: PGID
               value: {{ $.Values.global.pgid | quote }}
+            {{- if $.Values.global.timezone }}
+            - name: TZ
+              value: {{ $.Values.global.timezone | quote }}
+            {{- end }}
           ports:
             - containerPort: {{ $app.port }}
             {{- if $app.extraPorts }}

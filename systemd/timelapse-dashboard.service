@@ -1,0 +1,20 @@
+[Unit]
+Description=Timelapse Web Dashboard Monitor
+After=network.target
+
+[Service]
+Type=simple
+# Ensure you set the User to your actual Linux username
+User=lance
+# Set the path to where you clone/copy this folder on your server
+WorkingDirectory=/home/lance/timelapse
+# Use the absolute path to your Python interpreter (preferably a venv)
+ExecStart=/home/lance/timelapse/venv/bin/python dashboard.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=timelapse-dashboard
+
+[Install]
+WantedBy=multi-user.target

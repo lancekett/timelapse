@@ -211,38 +211,48 @@ python archive_compiler.py --fps 5 --output seasonal_timelapse.mp4
 
 ---
 
-## 🚀 Deploying as a Background Linux Service
+## 🚀 Deploying as Background Linux Services
 
-To ensure the script starts automatically when your server boots and recovers from errors:
+To ensure both the capture daemon and the web dashboard start automatically when your server boots and recover from crashes, you can install them as systemd services.
 
-1. Open `/home/lance/timelapse/systemd/timelapse.service` and verify that the user and paths match your actual Linux user account name.
-2. Copy the modified service file into systemd's directory:
+### 1. Configure the Service Files
+Verify that the `User` and `WorkingDirectory` paths match your Linux user account name in:
+* `systemd/timelapse.service` (for the capture loop)
+* `systemd/timelapse-dashboard.service` (for the web monitoring dashboard)
+
+### 2. Copy and Enable the Services
+1. Copy the service templates into systemd's directory:
    ```bash
    sudo cp systemd/timelapse.service /etc/systemd/system/timelapse.service
+   sudo cp systemd/timelapse-dashboard.service /etc/systemd/system/timelapse-dashboard.service
    ```
-3. Reload systemd configurations:
+2. Reload systemd configurations:
    ```bash
    sudo systemctl daemon-reload
    ```
-4. Enable the service to start automatically at boot:
+3. Enable both services to start automatically at boot:
    ```bash
    sudo systemctl enable timelapse.service
+   sudo systemctl enable timelapse-dashboard.service
    ```
-5. Start the service immediately:
+4. Start both services immediately:
    ```bash
    sudo systemctl start timelapse.service
+   sudo systemctl start timelapse-dashboard.service
    ```
 
-### 📊 Managing and Monitoring the Service
+### 📊 Managing and Monitoring the Services
 
 Check current status:
 ```bash
 sudo systemctl status timelapse.service
+sudo systemctl status timelapse-dashboard.service
 ```
 
 View real-time logs (very useful for debugging):
 ```bash
 journalctl -u timelapse.service -f
+journalctl -u timelapse-dashboard.service -f
 ```
 
 Restart the service:

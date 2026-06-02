@@ -42,7 +42,7 @@ apps:
     configPath: /app/config
   timelapse:
     enabled: true
-    image: lancekett/timelapse:latest # Replace with your built image name
+    image: localhost/lancekett/timelapse:1.0 # Match the exact tag registered in containerd
     port: 8000
     ip: 192.168.128.48 # Choose a free IP in your MetalLB range
     configPath: /config

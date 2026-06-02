@@ -77,19 +77,21 @@ class DashboardHandler(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
-        if self.path == "/":
+        path = self.path.split("?")[0]
+        if path == "/":
             self.serve_index()
-        elif self.path == "/api/status":
+        elif path == "/api/status":
             self.serve_status()
-        elif self.path == "/api/logs":
+        elif path == "/api/logs":
             self.serve_text(load_logs())
-        elif self.path == "/api/preview":
+        elif path == "/api/preview":
             self.serve_preview()
         else:
             self.send_error(404, "Page Not Found")
 
     def do_POST(self):
-        if self.path == "/api/config":
+        path = self.path.split("?")[0]
+        if path == "/api/config":
             self.save_config()
         else:
             self.send_error(404, "Endpoint Not Found")

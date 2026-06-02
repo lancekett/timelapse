@@ -1,7 +1,7 @@
 import os
 import time
 import logging
-import google.generativeai as genai
+from google import genai
 
 logger = logging.getLogger("timelapse")
 
@@ -26,8 +26,8 @@ def load_gemini_api_key():
 
 def analyze_video_weather(video_path):
     """
-    Uploads the compiled timelapse video to Google Generative AI File API,
-    polls until processed, and uses Gemini to summarize the weather.
+    Uploads the compiled timelapse video to Google GenAI Files API,
+    and uses the new google-genai SDK to summarize the weather.
     """
     api_key = load_gemini_api_key()
     if not api_key:
@@ -38,33 +38,35 @@ def analyze_video_weather(video_path):
         return None
 
     try:
-        logger.info("Configuring Gemini API key...")
-        genai.configure(api_key=api_key)
+        logger.info("Configuring Gemini Client with API key...")
+        client = genai.Client(api_key=api_key)
 
-        logger.info(f"Uploading video {video_path} to Gemini API for analysis...")
-        video_file = genai.upload_file(path=video_path)
-        logger.info(f"Uploaded file name on Gemini API: {video_file.name}")
+        logger.info(f"Uploading video {video_path} to Gemini Files API...")
+        video_file = client.files.upload(file=video_path)
+        logger.info(f"Uploaded file name: {video_file.name}")
 
-        # Wait for the file to process (required for video files)
+        # Wait for the file to process (required for videos)
         logger.info("Waiting for video file processing on Gemini...")
-        while video_file.state.name == "PROCESSING":
+        current_file = client.files.get(name=video_file.name)
+        while current_file.state.name == "PROCESSING":
             time.sleep(2)
-            video_file = genai.get_file(video_file.name)
+            current_file = client.files.get(name=video_file.name)
 
-        if video_file.state.name == "FAILED":
-            logger.error(f"Gemini video file processing failed: {video_file.name}")
+        if current_file.state.name == "FAILED":
+            logger.error(f"Gemini video file processing failed: {current_file.name}")
             return None
 
         logger.info("Video processing complete. Requesting weather summary...")
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        
         prompt = (
             "Analyze this timelapse video of a farm and write a single, brief sentence "
             "describing the weather progression throughout the day (e.g. 'Cloudy with morning fog, "
             "clearing up to sunny conditions in the afternoon'). Do not include any other commentary."
         )
         
-        response = model.generate_content([video_file, prompt])
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[current_file, prompt]
+        )
         summary = response.text.strip()
         
         # Strip potential markdown or wrapping quotes
@@ -75,10 +77,10 @@ def analyze_video_weather(video_path):
         
         # Cleanup uploaded file from Gemini storage
         try:
-            logger.info(f"Deleting video file {video_file.name} from Gemini API...")
-            genai.delete_file(video_file.name)
+            logger.info(f"Deleting video file {current_file.name} from Gemini API...")
+            client.files.delete(name=current_file.name)
         except Exception as cleanup_err:
-            logger.warning(f"Could not delete Gemini video file {video_file.name}: {cleanup_err}")
+            logger.warning(f"Could not delete Gemini video file {current_file.name}: {cleanup_err}")
             
         return summary
 

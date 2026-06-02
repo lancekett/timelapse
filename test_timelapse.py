@@ -1,6 +1,7 @@
 import os
 import shutil
 import unittest
+import unittest.mock
 from datetime import datetime, time, timezone, timedelta
 
 # Import modules to test
@@ -138,6 +139,86 @@ class TestArchiver(unittest.TestCase):
         
         print("\n--- ARCHIVER TEST ---")
         print(f"Successfully filtered and archived midday frames: {copied}")
+
+
+class TestNotifications(unittest.TestCase):
+    @unittest.mock.patch('urllib.request.urlopen')
+    def test_send_notification_ntfy_no_attachment(self, mock_urlopen):
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status = 200
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
+        from timelapse import send_notification
+        config = {
+            "notifications": {
+                "provider": "ntfy",
+                "ntfy_topic": "test-topic"
+            }
+        }
+        
+        # Test notification without attachment
+        success = send_notification(
+            config,
+            message="Test Message\nLine 2",
+            title="Test Title 🚨",
+            tags="tag1,tag2"
+        )
+        
+        self.assertTrue(success)
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args[0][0]
+        
+        # Verify URL query parameters are formatted correctly
+        self.assertIn("https://ntfy.sh/test-topic", req.full_url)
+        self.assertIn("title=Test+Title+%F0%9F%9A%A8", req.full_url)
+        self.assertIn("tags=tag1%2Ctag2", req.full_url)
+        self.assertEqual(req.data, b"Test Message\nLine 2")
+
+    @unittest.mock.patch('urllib.request.urlopen')
+    def test_send_notification_ntfy_with_attachment(self, mock_urlopen):
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status = 200
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
+        from timelapse import send_notification
+        config = {
+            "notifications": {
+                "provider": "ntfy",
+                "ntfy_topic": "test-topic"
+            }
+        }
+        
+        # Write a dummy attachment file
+        dummy_file = "./temp_test_attachment.png"
+        with open(dummy_file, "wb") as f:
+            f.write(b"dummy_image_data")
+            
+        try:
+            success = send_notification(
+                config,
+                message="Test Message\nLine 2",
+                title="Test Title 🚨",
+                tags="tag1,tag2",
+                attachment_path=dummy_file
+            )
+            
+            self.assertTrue(success)
+            mock_urlopen.assert_called_once()
+            req = mock_urlopen.call_args[0][0]
+            
+            # Verify URL contains all parameters including message
+            self.assertIn("https://ntfy.sh/test-topic", req.full_url)
+            self.assertIn("title=Test+Title+%F0%9F%9A%A8", req.full_url)
+            self.assertIn("tags=tag1%2Ctag2", req.full_url)
+            self.assertIn("message=Test+Message%0ALine+2", req.full_url)
+            
+            # Verify body contains attachment bytes and filename header is set
+            self.assertEqual(req.data, b"dummy_image_data")
+            self.assertEqual(req.get_header("X-filename"), "temp_test_attachment.png")
+            
+        finally:
+            if os.path.exists(dummy_file):
+                os.remove(dummy_file)
 
 
 if __name__ == "__main__":

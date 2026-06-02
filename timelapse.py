@@ -4,6 +4,7 @@ import time
 import json
 import logging
 import urllib.request
+import urllib.parse
 from datetime import datetime, timezone
 
 # Import our custom modules
@@ -90,39 +91,45 @@ def send_notification(config, message, title=None, tags=None, attachment_path=No
             logger.warning("ntfy provider selected but ntfy_topic is empty.")
             return False
             
-        url = f"https://ntfy.sh/{topic}"
-        
-        # If we have a local attachment path, we upload it as the payload body
+        params = {}
+        if title:
+            params["title"] = title
+        if tags:
+            params["tags"] = tags
+            
+        # If we have a local attachment path, we upload it as the payload body.
+        # We pass other parameters (including message) in query string because
+        # HTTP headers cannot contain newlines and raise invalid header errors.
         if attachment_path and os.path.exists(attachment_path):
             try:
                 with open(attachment_path, "rb") as f:
                     image_bytes = f.read()
                 
+                attach_params = params.copy()
+                if message:
+                    attach_params["message"] = message
+                    
+                query_string = urllib.parse.urlencode(attach_params)
+                url = f"https://ntfy.sh/{topic}"
+                if query_string:
+                    url = f"{url}?{query_string}"
+                    
                 req = urllib.request.Request(url, data=image_bytes)
                 req.add_header("X-Filename", os.path.basename(attachment_path))
-                
-                # In ntfy, when sending attachment via POST body, title/message/tags
-                # should be sent as headers
-                if title:
-                    req.add_header("X-Title", title.encode("utf-8"))
-                if message:
-                    req.add_header("X-Message", message.encode("utf-8"))
-                if tags:
-                    req.add_header("X-Tags", tags.encode("utf-8"))
             except Exception as e:
                 logger.error(f"Failed to prepare ntfy attachment: {e}")
                 # Fall back to standard request
+                query_string = urllib.parse.urlencode(params)
+                url = f"https://ntfy.sh/{topic}"
+                if query_string:
+                    url = f"{url}?{query_string}"
                 req = urllib.request.Request(url, data=message.encode("utf-8"))
-                if title:
-                    req.add_header("Title", title.encode("utf-8"))
-                if tags:
-                    req.add_header("Tags", tags.encode("utf-8"))
         else:
+            query_string = urllib.parse.urlencode(params)
+            url = f"https://ntfy.sh/{topic}"
+            if query_string:
+                url = f"{url}?{query_string}"
             req = urllib.request.Request(url, data=message.encode("utf-8"))
-            if title:
-                req.add_header("Title", title.encode("utf-8"))
-            if tags:
-                req.add_header("Tags", tags.encode("utf-8"))
             
         try:
             with urllib.request.urlopen(req, timeout=10) as response:

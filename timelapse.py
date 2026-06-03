@@ -77,6 +77,26 @@ def update_status_file(status_dict):
         logger.error(f"Failed to write status.json: {e}")
 
 
+def compress_image_ffmpeg(input_path, output_path, max_width=800, quality=4):
+    """
+    Compresses an image to a specific width and JPEG quality using ffmpeg.
+    """
+    import subprocess
+    try:
+        cmd = [
+            "ffmpeg", "-y",
+            "-i", input_path,
+            "-vf", f"scale={max_width}:-1",
+            "-q:v", str(quality),
+            output_path
+        ]
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        return True
+    except Exception as e:
+        logger.error(f"Failed to compress image using ffmpeg: {e}")
+        return False
+
+
 def send_notification(config, message, title=None, tags=None, attachment_path=None):
     """
     Send push notification using the configured provider (ntfy or Discord).
@@ -101,8 +121,25 @@ def send_notification(config, message, title=None, tags=None, attachment_path=No
         # We pass other parameters (including message) in query string because
         # HTTP headers cannot contain newlines and raise invalid header errors.
         if attachment_path and os.path.exists(attachment_path):
+            import tempfile
+            
+            upload_path = attachment_path
+            temp_thumb = None
+            
+            # Check if file size > 500KB to avoid compressing already small files
+            if os.path.getsize(attachment_path) > 500 * 1024:
+                try:
+                    fd, temp_path = tempfile.mkstemp(suffix=".jpg")
+                    os.close(fd)
+                    logger.info(f"Compressing preview attachment {os.path.basename(attachment_path)} with ffmpeg...")
+                    if compress_image_ffmpeg(attachment_path, temp_path):
+                        upload_path = temp_path
+                        temp_thumb = temp_path
+                except Exception as compress_err:
+                    logger.warning(f"Could not create temporary preview thumbnail: {compress_err}")
+
             try:
-                with open(attachment_path, "rb") as f:
+                with open(upload_path, "rb") as f:
                     image_bytes = f.read()
                 
                 attach_params = params.copy()
@@ -116,27 +153,41 @@ def send_notification(config, message, title=None, tags=None, attachment_path=No
                     
                 req = urllib.request.Request(url, data=image_bytes)
                 req.add_header("X-Filename", os.path.basename(attachment_path))
+                
+                with urllib.request.urlopen(req, timeout=15) as response:
+                    return response.status == 200
             except Exception as e:
-                logger.error(f"Failed to prepare ntfy attachment: {e}")
-                # Fall back to standard request
+                logger.error(f"Failed to send ntfy attachment: {e}. Falling back to standard message.")
+                # Fall back to standard request without attachment
                 query_string = urllib.parse.urlencode(params)
                 url = f"https://ntfy.sh/{topic}"
                 if query_string:
                     url = f"{url}?{query_string}"
                 req = urllib.request.Request(url, data=message.encode("utf-8"))
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as response:
+                        return response.status == 200
+                except Exception as text_err:
+                    logger.error(f"Fallback text notification also failed: {text_err}")
+                    return False
+            finally:
+                if temp_thumb and os.path.exists(temp_thumb):
+                    try:
+                        os.remove(temp_thumb)
+                    except Exception:
+                        pass
         else:
             query_string = urllib.parse.urlencode(params)
             url = f"https://ntfy.sh/{topic}"
             if query_string:
                 url = f"{url}?{query_string}"
             req = urllib.request.Request(url, data=message.encode("utf-8"))
-            
-        try:
-            with urllib.request.urlopen(req, timeout=10) as response:
-                return response.status == 200
-        except Exception as e:
-            logger.error(f"Failed to send ntfy notification to topic '{topic}': {e}")
-            return False
+            try:
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    return response.status == 200
+            except Exception as e:
+                logger.error(f"Failed to send ntfy notification to topic '{topic}': {e}")
+                return False
             
     elif provider == "discord":
         webhook_url = notif_cfg.get("discord_webhook_url", "")

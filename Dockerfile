@@ -14,7 +14,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code files and config template
-COPY ai_analyzer.py archive_compiler.py compiler.py dashboard.py scheduler.py timelapse.py youtube_uploader.py config.json ./
+COPY ai_analyzer.py archive_compiler.py compiler.py dashboard.py scheduler.py timelapse.py youtube_uploader.py weather.py config.json ./
 
 # Copy and setup entrypoint script
 COPY timelapse-entrypoint.sh ./

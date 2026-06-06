@@ -28,3 +28,9 @@
   - `[x]` Implement simulated tests for scheduling logic
   - `[x]` Implement simulated test for image archiver
   - `[x]` Perform manual end-to-end verification
+- `[x]` Weather Stats Integration
+  - `[x]` Create `weather.py` helper to query Open-Meteo API
+  - `[x]` Modify `ai_analyzer.py` to accept weather stats and enrich the Gemini prompt
+  - `[x]` Modify `timelapse.py` to trigger weather fetches, pass context to AI analyzer, and include weather in push alerts and YouTube description
+  - `[x]` Update `test_timelapse.py` to add automated tests for the weather parsing module
+  - `[x]` Sync modified files and documentation to the `docs/` folder

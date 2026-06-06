@@ -1,164 +1,85 @@
-# Linux Timelapse Program Implementation Plan
+# Weather Stats Integration Implementation Plan
 
-This implementation plan outlines the creation of a Python-based timelapse program designed to run on a Linux server. It automatically downloads images from an HTTP camera endpoint at a configurable interval, respects daily start/stop times relative to sunrise and sunset, compiles the captured images into an MP4 video at the end of each day, uploads the video to YouTube, and sends push notifications to your phone.
+This plan outlines the integration of daily weather statistics (maximum temperature, minimum temperature, and total daily precipitation) from the free, API-key-free **Open-Meteo API** into the daily timelapse compiler pipeline. The stats will be:
+1. Compiled into the terminal and push notification stats blocks.
+2. Injected into the Gemini AI video analysis prompt to provide ground-truth meteorological numbers, resulting in a more accurate daily description.
+3. Automatically appended to the YouTube description metadata.
 
 ---
 
-## Technical Specifications & Choices
+## User Review Required
 
-### 1. Dynamic Scheduling based on Sunrise/Sunset
-* **Sunset/Sunrise Math (Offline & Dependency-Free)**: To avoid brittle external APIs, we will integrate a mathematical **Sun Model** based on the standard NOAA solar equations directly into a `scheduler.py` module.
-* **Configurable Offsets**: The program will allow specifying offsets in minutes relative to sunrise and sunset:
-  * E.g., `sunrise_offset_minutes = -30` (start 30 minutes *before* sunrise).
-  * E.g., `sunset_offset_minutes = 30` (end 30 minutes *after* sunset).
-* **Location settings**: User configures `latitude` and `longitude` in `config.json`, which the algorithm uses to determine exact times down to the minute for their specific location.
+> [!NOTE]
+> **API Dependency**: We will use the public Open-Meteo API (`api.open-meteo.com`). It is free, requires no API key, and is highly reliable.
+>
+> **Units**: Since your location is in Washington, USA (`46.52811, -123.01069`), we will default to Imperial units (Fahrenheit for temperature, inches for precipitation). We can make this configurable in `config.json` (e.g., metric vs imperial) for future-proofing.
 
-### 2. Camera Fetching
-* **No Authentication Needed**: The camera endpoint is accessed via a simple GET request.
-* We will use Python's built-in `urllib.request` to avoid third-party dependencies for simple downloading.
+---
 
-### 3. Archival & Cleanup Strategy ("Noon Archive")
-* To create a year-long timelapse later, we need a consistent set of daily frames.
-* At the end of the day, before deleting the raw daily frames, the program will:
-  1. Scan all captured frames in the day's folder `output_dir/YYYY-MM-DD/`.
-  2. Sort them by timestamp.
-  3. Filter for frames captured at or after **12:00:00** (local time).
-  4. Select the first **60 frames** from this set (covering 30 minutes at a 30s interval).
-  5. Copy these 60 frames to a long-term directory `archive_dir/YYYY-MM-DD/` (or a flat folder with timestamped names).
-  6. Compile the full video, verify its creation, and then **delete** the original day's folder `output_dir/YYYY-MM-DD/` to free up disk space.
+## Open Questions
 
-### 4. Mobile Push Notifications
-* We will integrate **[ntfy.sh](https://ntfy.sh)** and **Discord Webhooks**.
-* **ntfy.sh** is a free, open-source push notification service. 
-  * *How it works*: You install the `ntfy` app on your Android/iOS phone, subscribe to a custom topic name (e.g., `lance-timelapse-alerts`), and the server sends alerts with a simple HTTP POST request. No accounts or APIs required!
-* We will send notifications for:
-  * **Success**: When the day's timelapse is generated and successfully uploaded to YouTube.
-  * **Failure/Offline**: If the camera is unreachable for more than 5 consecutive attempts, we send a push notification immediately warning you that the camera might be offline.
-
-### 5. Automated YouTube Uploads
-* We will create a `youtube_uploader.py` module using the official `google-api-python-client`.
-* To handle credentials:
-  * We will provide a setup mode: `python youtube_uploader.py --setup`
-  * This will generate an OAuth authorization URL. The user opens it in a browser, signs in with their YouTube account, and pastes the code back (or it starts a local server to capture it).
-  * It saves a persistent `token.json` which allows the script to refresh access tokens and upload videos fully in the background without user intervention.
-  * Upload options (title, description, privacy status like `"private"`, `"unlisted"`, or `"public"`) will be configurable in `config.json`.
+> [!NOTE]
+> 1. **Configurable Units**: Should we add a `"units": "imperial"` or `"units": "metric"` field to `config.json`, or are you happy with us hardcoding imperial/metric based on standard US conventions?
+> 2. **Precipitation formatting**: If there is no rain (0.00 inches), would you like the notification to say "Rain: None" or show "Rain: 0.0 in"?
 
 ---
 
 ## Proposed Changes
 
-We will create the following files in the project workspace:
+We will introduce a new helper module and modify the main driver and AI analyzer:
 
-### 1. Configuration & Settings
+### 1. New Weather Fetcher Module
 
-#### [NEW] [config.json](file:///c:/Users/lance/Documents/antigravity/timelapse/config.json)
-Contains settings for camera, schedule, notification, and YouTube.
-```json
-{
-  "camera_url": "http://your-camera-ip/image.jpg",
-  "interval_seconds": 30,
-  "latitude": 37.7749,
-  "longitude": -122.4194,
-  "sunrise_offset_minutes": -30,
-  "sunset_offset_minutes": 30,
-  "output_dir": "./images",
-  "archive_dir": "./archive",
-  "video_dir": "./videos",
-  "fps": 30,
-  "notifications": {
-    "provider": "ntfy",
-    "ntfy_topic": "lance-timelapse-alerts",
-    "discord_webhook_url": ""
-  },
-  "youtube": {
-    "enabled": true,
-    "privacy_status": "unlisted",
-    "title_template": "Daily Timelapse - {date}",
-    "description_template": "Automated timelapse captured on {date} from {start_time} to {end_time}."
-  }
-}
-```
+#### [NEW] [weather.py](file:///c:/Users/lance/Documents/antigravity/timelapse/weather.py)
+* Contains `fetch_daily_weather(lat, lon, date_str, temp_unit="fahrenheit", precip_unit="inch")`.
+* Makes a standard HTTP GET request using python's built-in `urllib.request` to `api.open-meteo.com/v1/forecast`.
+* Extracts the daily maximum temperature, minimum temperature, and sum of precipitation for the specified date.
+* Returns a dictionary: `{"max_temp": float, "min_temp": float, "precipitation": float, "temp_unit": str, "precip_unit": str}`.
 
-### 2. Implementation Modules
+---
 
-#### [NEW] [scheduler.py](file:///c:/Users/lance/Documents/antigravity/timelapse/scheduler.py)
-Houses the mathematical `Sun` calculations.
-* Computes local sunrise and sunset for a given date, latitude, and longitude.
-* Computes active recording start/stop datetimes based on configured offsets.
-* Offers `is_active(current_time)` to check whether the program should capture or wait.
+### 2. Main Daemon Loop Integration
 
-#### [NEW] [youtube_uploader.py](file:///c:/Users/lance/Documents/antigravity/timelapse/youtube_uploader.py)
-Handles authenticating and uploading compiled MP4 videos to YouTube.
-* Includes `--setup` command to perform initial OAuth flow and save `token.json`.
-* Provides an `upload_video(file_path, title, description, privacy)` function.
+#### [MODIFY] [timelapse.py](file:///c:/Users/lance/Documents/antigravity/timelapse/timelapse.py)
+* At the end of the day, before initiating the video compiler, call `weather.fetch_daily_weather(lat, lon, today_str, ...)` to grab the day's stats.
+* Pass the weather dictionary to the `analyze_video_weather(video_path, weather_stats)` function.
+* Include the weather statistics in the local notifications (Discord / ntfy) under the capture statistics block.
+* Include the weather statistics in the YouTube description template.
 
-#### [NEW] [compiler.py](file:///c:/Users/lance/Documents/antigravity/timelapse/compiler.py)
-Handles:
-1. Finding and sorting all images for a given day.
-2. Saving the 60 "noon onwards" frames to `archive_dir`.
-3. Generating a text file list of images for FFmpeg's concat demuxer.
-4. Calling `ffmpeg` via Python `subprocess` to compile the video.
-5. Verifying the video file size, then deleting the temporary files and raw daily frames.
+---
 
-#### [NEW] [timelapse.py](file:///c:/Users/lance/Documents/antigravity/timelapse/timelapse.py)
-The core driver.
-* Runs the infinite loop.
-* Monitors time windows.
-* Performs camera GET requests and handles connection failures (notifies if offline).
-* Triggers compilation and YouTube upload at the end of the capture window.
+### 3. AI Analysis Prompt Enhancement
 
-#### [NEW] [requirements.txt](file:///c:/Users/lance/Documents/antigravity/timelapse/requirements.txt)
-Specifies dependencies for YouTube uploads and notifications:
-* `google-api-python-client`
-* `google-auth-oauthlib`
-* `google-auth-httplib2`
+#### [MODIFY] [ai_analyzer.py](file:///c:/Users/lance/Documents/antigravity/timelapse/ai_analyzer.py)
+* Update `analyze_video_weather(video_path, weather_stats=None)` to accept the weather stats dictionary.
+* If weather stats are available, inject them directly into the Gemini prompt:
+  * *Example Prompt*:
+    ```text
+    Analyze this timelapse video of a farm and write a single, brief sentence describing the weather progression throughout the day.
+    
+    For context, the actual recorded meteorological stats for this day were:
+    - High Temperature: 65°F
+    - Low Temperature: 48°F
+    - Total Precipitation: 0.12 inches
+    
+    Use these stats to ensure your visual description is highly accurate (e.g. mentioning rainfall if precipitation was recorded). Do not mention the raw numbers in the sentence itself.
+    ```
+* This ground-truth context will enable the Gemini model to write summaries that match both the visuals and the absolute weather numbers.
 
-#### [NEW] [README.md](file:///c:/Users/lance/Documents/antigravity/timelapse/README.md)
-Comprehensive walkthrough on installation, setting up the Google Cloud Project for YouTube upload, setting up the mobile `ntfy` app, and configuring systemd.
+---
+
+### 4. Configuration
+
+#### [MODIFY] [config.json](file:///c:/Users/lance/Documents/antigravity/timelapse/config.json)
+* Add optional `"weather_units": "imperial"` or `"metric"` key.
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
-1. **Schedule Logic Test**: Verify time calculation edge cases (e.g., afternoon, morning, midnight) and sunrise/sunset offsets.
-2. **Archiver Test**: Verify that given a set of test files with datetime names, it correctly selects and copies exactly the first 60 files starting at or after 12:00:00.
+1. **Mock Weather API test**: In `test_timelapse.py`, add a test case to mock the Open-Meteo API response and verify that `weather.py` parses the JSON structure correctly.
+2. **Uploader/Stats string verification**: Test that the formatting of the stats block handles missing or `None` weather data gracefully.
 
 ### Manual Verification
-1. **Setup Run**: Run `python youtube_uploader.py --setup` to generate the credentials.
-2. **End-to-End Simulation**: Run with a short 5-second interval, simulated camera endpoint, and a 1-minute capture window, verifying:
-   - Capture of files.
-   - Extraction of "noon" files (simulating the time filter).
-   - Successful rendering of MP4 video.
-   - Mobile notification received.
-   - YouTube upload initiated.
-
----
-
-## AI Weather Summary Integration Plan (Gemini API)
-
-This feature adds automatic, intelligent weather summaries to each daily timelapse video by analyzing the compiled `.mp4` video with Google's Gemini Flash model.
-
-### 1. Requirements & Dependencies
-* **Libraries**: Add `google-generativeai` to `requirements.txt`.
-* **API Key**: The user must provide a Gemini API Key from Google AI Studio.
-
-### 2. Configuration Updates (`config.json`)
-Add new settings under a `"gemini"` block:
-```json
-  "gemini": {
-    "enabled": true,
-    "api_key": "YOUR_GEMINI_API_KEY",
-    "model_name": "gemini-2.5-flash"
-  }
-```
-
-### 3. Workflow Steps
-1. **File Upload**: Right after daily video compilation completes successfully, the script uploads the compiled `.mp4` file to Google's Generative AI File API.
-2. **Processing Wait**: The script polls the file status until the video is fully processed and ready (takes a few seconds for short videos).
-3. **Prompt & Generation**: Calls the Gemini API with the video file and the prompt:
-   *"Analyze this timelapse video of a farm and write a single, brief sentence describing the weather progression throughout the day (e.g. 'Cloudy with morning fog, clearing up to sunny conditions in the afternoon')."*
-4. **Cleanup**: Deletes the file from Google's Generative AI File API storage after generation.
-5. **Distribution**:
-   * Appends the weather summary to the YouTube description.
-   * Includes the weather summary directly in the `ntfy` mobile push notification.
+1. Run `python weather.py` standalone to output today's weather for your coordinates to the console.

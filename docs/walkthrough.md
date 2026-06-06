@@ -1,6 +1,6 @@
 # Walkthrough - Linux Server Timelapse Program
 
-We have successfully implemented and verified a production-ready, fully configurable timelapse capture and compiler suite for your Linux server. 
+We have successfully implemented and verified a production-ready, fully configurable timelapse capture and compiler suite for your Linux server.
 
 ---
 
@@ -20,24 +20,31 @@ We created a structured, modular Python codebase in your workspace directory:
 4. **[`youtube_uploader.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/youtube_uploader.py)**
    * Implements a resumable chunked video uploader utilizing the Google API Client.
    * Includes a CLI setup script (`--setup`) to execute the initial browser OAuth2 consent flow, which generates a persistent `token.json` file.
-5. **[`timelapse.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/timelapse.py)**
+5. **[`weather.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/weather.py) [NEW]**
+   * Connects to the free, key-free Open-Meteo API using standard Python library tools.
+   * Queries daily high/low temperatures and precipitation for your specific farm coordinates.
+6. **[`ai_analyzer.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/ai_analyzer.py) [MODIFIED]**
+   * Uses Gemini 2.5 Flash to automatically summarize the visual progression of the daily weather from the MP4 video.
+   * Now integrates ground-truth weather metrics directly into the AI prompt to guide the model's descriptions (e.g. aligning visual reports of wet soil/rain with actual registered precipitation).
+7. **[`timelapse.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/timelapse.py) [MODIFIED]**
    * The core background driver that monitors the active solar recording window.
    * Fetches frames from your camera via HTTP, detects connection drops, and sends **push notifications to your phone** using free [ntfy.sh](https://ntfy.sh) topics or Discord webhooks when your video is uploaded or if the camera goes offline.
    * Reloads configuration dynamically on the fly without needing service restarts.
-6. **[`systemd/timelapse.service`](file:///c:/Users/lance/Documents/antigravity/timelapse/systemd/timelapse.service)**
+   * Integrates the weather fetcher at the end of the capture window, compiling a comprehensive meteorological stats card into push notifications and YouTube video descriptions.
+8. **[`systemd/timelapse.service`](file:///c:/Users/lance/Documents/antigravity/timelapse/systemd/timelapse.service)**
    * A service unit template to set up the program as a reliable, self-healing background service on boot.
-7. **[`requirements.txt`](file:///c:/Users/lance/Documents/antigravity/timelapse/requirements.txt)**
+9. **[`requirements.txt`](file:///c:/Users/lance/Documents/antigravity/timelapse/requirements.txt)**
    * Houses the dependencies required for Google API integration.
-8. **[`test_timelapse.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/test_timelapse.py)**
-   * A comprehensive unit test suite validating the solar calculation offsets and the midday archival filters.
-9. **[`README.md`](file:///c:/Users/lance/Documents/antigravity/timelapse/README.md)**
-   * A thorough step-by-step setup guide covering installation, configuration, Google Cloud authorization, mobile push notifications, and systemd deployment.
+10. **[`test_timelapse.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/test_timelapse.py) [MODIFIED]**
+    * A comprehensive unit test suite validating the solar calculation offsets, the midday archival filters, ntfy push alerts, and the Open-Meteo weather JSON parser.
+11. **[`README.md`](file:///c:/Users/lance/Documents/antigravity/timelapse/README.md)**
+    * A thorough step-by-step setup guide covering installation, configuration, Google Cloud authorization, mobile push notifications, and systemd deployment.
 
 ---
 
 ## 🧪 Verification & Validation Results
 
-We wrote and executed a dedicated verification script ([`test_timelapse.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/test_timelapse.py)) to assert that our math and logic operate flawlessly.
+We wrote and executed a dedicated verification script ([`test_timelapse.py`](file:///c:/Users/lance/Documents/antigravity/timelapse/test_timelapse.py)) to assert that our math and logic operate correctly.
 
 ### 1. Sun Model Calculations (San Francisco - 2026-06-01)
 * **Test Case**: Verified calculation for Latitude `37.7749`, Longitude `-122.4194` under simulated PDT (UTC-7) on June 1, 2026.
@@ -57,13 +64,21 @@ We wrote and executed a dedicated verification script ([`test_timelapse.py`](fil
   * Ignored subsequent frames beyond the limit.
   * Copied files were verified in a separate isolated temporary archive path.
 
+### 3. Open-Meteo Weather API Parser [NEW]
+* **Test Case**: Mocked an HTTP response from the Open-Meteo API for coordinates `46.52811, -123.01069` on `2026-06-06`.
+* **Results**:
+  * Successfully parsed daily JSON response structure.
+  * Extracted maximum temperature of `65.2°F` and minimum of `48.1°F`.
+  * Correctly parsed daily precipitation sum of `0.12 in` (showing imperial formatting).
+  * Verified that API query strings correctly set latitude, longitude, start_date, and end_date.
+
 ---
 
 ## 🏁 How to Start on Your Linux Server
 
 Refer to the complete **[`README.md`](file:///c:/Users/lance/Documents/antigravity/timelapse/README.md)** file for a full walkthrough. Here is the quick-start sequence:
 
-1. **Copy the directory** to your Linux server (e.g. `/home/lance/timelapse`).
+1. **Copy the directory** to your Linux server (e.g. `/home/your_username/timelapse`).
 2. **Setup virtual environment**:
    ```bash
    python3 -m venv venv
@@ -78,7 +93,7 @@ Refer to the complete **[`README.md`](file:///c:/Users/lance/Documents/antigravi
 5. **Start your background service**:
    ```bash
    sudo cp systemd/timelapse.service /etc/systemd/system/timelapse.service
-   # Verify user and paths in /etc/systemd/system/timelapse.service
+   # Edit /etc/systemd/system/timelapse.service to replace 'your_username'
    sudo systemctl daemon-reload
    sudo systemctl enable timelapse.service --now
    ```

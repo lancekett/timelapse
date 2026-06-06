@@ -24,10 +24,11 @@ def load_gemini_api_key():
     return os.environ.get("GEMINI_API_KEY")
 
 
-def analyze_video_weather(video_path):
+def analyze_video_weather(video_path, weather_stats=None):
     """
     Uploads the compiled timelapse video to Google GenAI Files API,
     and uses the new google-genai SDK to summarize the weather.
+    Optionally enriches the prompt with ground-truth weather statistics.
     """
     api_key = load_gemini_api_key()
     if not api_key:
@@ -62,6 +63,25 @@ def analyze_video_weather(video_path):
             "describing the weather progression throughout the day (e.g. 'Cloudy with morning fog, "
             "clearing up to sunny conditions in the afternoon'). Do not include any other commentary."
         )
+        
+        if weather_stats:
+            max_temp = weather_stats.get("max_temp")
+            min_temp = weather_stats.get("min_temp")
+            precip = weather_stats.get("precipitation")
+            t_unit = weather_stats.get("temp_unit", "°F")
+            p_unit = weather_stats.get("precip_unit", "in")
+            
+            prompt += (
+                f"\n\nFor context, the actual recorded meteorological stats for this day were:\n"
+                f"- High Temperature: {max_temp}{t_unit}\n"
+                f"- Low Temperature: {min_temp}{t_unit}\n"
+                f"- Total Precipitation: {precip} {p_unit}\n\n"
+                f"Use this ground-truth data to ensure your visual description is highly accurate (for example, "
+                f"if positive precipitation was recorded, match it with visual signs of rain or damp soil in the video). "
+                f"Do not mention the raw numbers or units themselves in your descriptive sentence."
+            )
+            
+        logger.debug(f"Gemini Prompt:\n{prompt}")
         
         response = client.models.generate_content(
             model="gemini-2.5-flash",

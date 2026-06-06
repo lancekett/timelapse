@@ -373,11 +373,19 @@ def main():
                         if comp_success:
                             compilation_done_for_date = today_str
                             
+                            # Fetch daily weather statistics
+                            weather_stats = None
+                            try:
+                                import weather
+                                weather_stats = weather.fetch_daily_weather(lat, lon, today_str)
+                            except Exception as w_err:
+                                logger.error(f"Failed to fetch daily weather data: {w_err}")
+                            
                             # Generate AI weather summary
                             weather_summary = None
                             try:
                                 from ai_analyzer import analyze_video_weather
-                                weather_summary = analyze_video_weather(video_path)
+                                weather_summary = analyze_video_weather(video_path, weather_stats=weather_stats)
                             except Exception as ai_err:
                                 logger.error(f"Failed to generate AI weather summary: {ai_err}")
                                 
@@ -404,6 +412,25 @@ def main():
                                 f"• Playback Speed: {fps} FPS\n"
                                 f"• Video Length: {duration_str}"
                             )
+                            
+                            if weather_stats:
+                                max_t = weather_stats.get("max_temp")
+                                min_t = weather_stats.get("min_temp")
+                                rain = weather_stats.get("precipitation")
+                                t_unit = weather_stats.get("temp_unit", "°F")
+                                p_unit = weather_stats.get("precip_unit", "in")
+                                
+                                # Format rain, e.g., "0.00 in"
+                                rain_str = f"{rain:.2f} {p_unit}" if isinstance(rain, (int, float)) else f"{rain} {p_unit}"
+                                max_temp_str = f"{max_t}{t_unit}" if max_t is not None else "N/A"
+                                min_temp_str = f"{min_t}{t_unit}" if min_t is not None else "N/A"
+                                
+                                stats_block += (
+                                    f"\n\n--- 🌤️ Weather Statistics ---\n"
+                                    f"• High Temp: {max_temp_str}\n"
+                                    f"• Low Temp: {min_temp_str}\n"
+                                    f"• Precipitation: {rain_str}"
+                                )
                             
                             # Add stats to notification message
                             notif_msg += stats_block

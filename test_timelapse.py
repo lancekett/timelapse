@@ -221,5 +221,52 @@ class TestNotifications(unittest.TestCase):
                 os.remove(dummy_file)
 
 
+class TestWeather(unittest.TestCase):
+    @unittest.mock.patch('urllib.request.urlopen')
+    def test_fetch_daily_weather(self, mock_urlopen):
+        import json
+        mock_response = unittest.mock.MagicMock()
+        mock_response.status = 200
+        
+        mock_json_response = {
+            "latitude": 46.52811,
+            "longitude": -123.01069,
+            "timezone": "America/Los_Angeles",
+            "daily_units": {
+                "time": "iso8601",
+                "temperature_2m_max": "°F",
+                "temperature_2m_min": "°F",
+                "precipitation_sum": "inch"
+            },
+            "daily": {
+                "time": ["2026-06-06"],
+                "temperature_2m_max": [65.2],
+                "temperature_2m_min": [48.1],
+                "precipitation_sum": [0.12]
+            }
+        }
+        
+        mock_response.read.return_value = json.dumps(mock_json_response).encode('utf-8')
+        mock_urlopen.return_value.__enter__.return_value = mock_response
+        
+        import weather
+        res = weather.fetch_daily_weather(46.52811, -123.01069, "2026-06-06")
+        
+        self.assertIsNotNone(res)
+        self.assertEqual(res["max_temp"], 65.2)
+        self.assertEqual(res["min_temp"], 48.1)
+        self.assertEqual(res["precipitation"], 0.12)
+        self.assertEqual(res["temp_unit"], "°F")
+        self.assertEqual(res["precip_unit"], "inch")
+        
+        # Verify URL parameters
+        mock_urlopen.assert_called_once()
+        req = mock_urlopen.call_args[0][0]
+        self.assertIn("latitude=46.52811", req.full_url)
+        self.assertIn("longitude=-123.01069", req.full_url)
+        self.assertIn("start_date=2026-06-06", req.full_url)
+        self.assertIn("end_date=2026-06-06", req.full_url)
+
+
 if __name__ == "__main__":
     unittest.main()

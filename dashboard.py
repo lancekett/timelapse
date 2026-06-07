@@ -4,6 +4,7 @@ import json
 import logging
 import urllib.request
 import shutil
+import re
 import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingTCPServer
@@ -88,6 +89,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.serve_text(load_logs())
         elif path == "/api/preview":
             self.serve_preview()
+        elif path == "/api/history":
+            self.serve_history()
+        elif path.startswith("/videos/"):
+            filename = path.replace("/videos/", "")
+            self.serve_video(filename)
         else:
             self.send_error(404, "Page Not Found")
 
@@ -365,6 +371,71 @@ class DashboardHandler(BaseHTTPRequestHandler):
             border: 1px solid var(--border-color);
             margin-top: 0.5rem;
         }
+        
+        /* History Archive styling */
+        .history-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            max-height: 400px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+        
+        .history-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            transition: border-color 0.2s;
+        }
+        
+        .history-item:hover {
+            border-color: var(--color-primary);
+        }
+        
+        .history-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+            text-align: left;
+        }
+        
+        .history-date {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        
+        .history-meta {
+            font-size: 0.825rem;
+            color: var(--text-secondary);
+        }
+        
+        .history-weather {
+            font-size: 0.875rem;
+            color: #34d399; /* emerald-400 */
+            margin-top: 0.25rem;
+            font-style: italic;
+        }
+        
+        .history-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-sm {
+            padding: 0.4rem 0.8rem;
+            font-size: 0.825rem;
+            border-radius: 6px;
+            text-decoration: none;
+            text-align: center;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -419,6 +490,11 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             <div id="stat-storage" class="stat-value">-- GB free</div>
                         </div>
                     </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">Timelapse Video Archive</div>
+                    <div id="history-list" class="history-container">Loading archive...</div>
                 </div>
                 
                 <div class="card">
@@ -576,13 +652,59 @@ class DashboardHandler(BaseHTTPRequestHandler):
             document.getElementById("preview-timestamp").textContent = "Updated " + new Date().toLocaleTimeString();
         }
 
+        async function fetchHistory() {
+            try {
+                const response = await fetch('/api/history');
+                const history = await response.json();
+                const container = document.getElementById("history-list");
+                
+                if (history.length === 0) {
+                    container.innerHTML = `<div style="text-align: center; color: var(--text-secondary); padding: 2rem;">No compiled videos found in archive yet.</div>`;
+                    return;
+                }
+                
+                let html = "";
+                history.forEach(item => {
+                    const metaParts = [];
+                    if (item.total_frames) metaParts.push(`${item.total_frames} frames`);
+                    if (item.duration) metaParts.push(item.duration);
+                    
+                    const metaText = metaParts.length > 0 ? metaParts.join(" • ") : "Local video file";
+                    const weatherText = item.weather_summary ? `<div class="history-weather">🌤️ ${item.weather_summary}</div>` : "";
+                    
+                    const playBtn = `<a href="/videos/${item.filename}" target="_blank" class="btn-sm btn" style="background: var(--bg-card); border: 1px solid var(--border-color); color: #fff; width: auto;">Play Local</a>`;
+                    const ytBtn = item.youtube_url ? `<a href="${item.youtube_url}" target="_blank" class="btn-sm btn" style="width: auto; background: linear-gradient(135deg, #ef4444, #b91c1c);">YouTube</a>` : "";
+                    
+                    html += `
+                        <div class="history-item">
+                            <div class="history-info">
+                                <div class="history-date">${item.date}</div>
+                                <div class="history-meta">${metaText}</div>
+                                ${weatherText}
+                            </div>
+                            <div class="history-actions">
+                                ${playBtn}
+                                ${ytBtn}
+                            </div>
+                        </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } catch (err) {
+                console.error("Error fetching history:", err);
+                document.getElementById("history-list").textContent = "Failed to load video archive.";
+            }
+        }
+
         // Loop runs
         fetchStatus();
         fetchLogs();
+        fetchHistory();
         
         setInterval(fetchStatus, 3000);   // Poll status every 3s
         setInterval(fetchLogs, 10000);    // Poll logs every 10s
         setInterval(refreshPreview, 7000); // Reload camera image preview every 7s
+        setInterval(fetchHistory, 60000); // Poll history every 60s
     </script>
 </body>
 </html>
@@ -629,6 +751,90 @@ class DashboardHandler(BaseHTTPRequestHandler):
         }
         
         self.wfile.write(json.dumps(payload).encode("utf-8"))
+
+    def serve_history(self):
+        config = {}
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+            except Exception:
+                pass
+                
+        video_dir = config.get("video_dir", "./videos")
+        history = []
+        
+        if os.path.exists(video_dir):
+            try:
+                for file_name in os.listdir(video_dir):
+                    if file_name.lower().endswith(".mp4"):
+                        date_str = "Unknown"
+                        match = re.search(r"timelapse_(\d{4}-\d{2}-\d{2})\.mp4", file_name)
+                        if match:
+                            date_str = match.group(1)
+                            
+                        # Look for matching .json file
+                        meta_file = os.path.splitext(file_name)[0] + ".json"
+                        meta_path = os.path.join(video_dir, meta_file)
+                        
+                        meta_data = {}
+                        if os.path.exists(meta_path):
+                            try:
+                                with open(meta_path, "r", encoding="utf-8") as f:
+                                    meta_data = json.load(f)
+                            except Exception:
+                                pass
+                                
+                        history.append({
+                            "filename": file_name,
+                            "date": date_str,
+                            "youtube_url": meta_data.get("youtube_url"),
+                            "youtube_id": meta_data.get("youtube_id"),
+                            "weather_summary": meta_data.get("weather_summary"),
+                            "total_frames": meta_data.get("total_frames"),
+                            "duration": meta_data.get("duration"),
+                            "created_at": meta_data.get("created_at")
+                        })
+            except Exception as e:
+                logger.error(f"Error listing video history: {e}")
+                
+        # Sort by date descending
+        history.sort(key=lambda x: x["date"], reverse=True)
+        
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(history).encode("utf-8"))
+
+    def serve_video(self, filename):
+        config = {}
+        if os.path.exists(CONFIG_FILE):
+            try:
+                with open(CONFIG_FILE, "r") as f:
+                    config = json.load(f)
+            except Exception:
+                pass
+        
+        video_dir = config.get("video_dir", "./videos")
+        safe_filename = os.path.basename(filename)
+        file_path = os.path.join(video_dir, safe_filename)
+        
+        if not os.path.exists(file_path):
+            self.send_error(404, "Video file not found")
+            return
+            
+        try:
+            file_size = os.path.getsize(file_path)
+            self.send_response(200)
+            self.send_header("Content-Type", "video/mp4")
+            self.send_header("Content-Length", str(file_size))
+            self.send_header("Accept-Ranges", "bytes")
+            self.end_headers()
+            
+            with open(file_path, "rb") as f:
+                shutil.copyfileobj(f, self.wfile)
+        except Exception as e:
+            logger.error(f"Error serving video file {safe_filename}: {e}")
 
     def serve_text(self, text):
         self.send_response(200)

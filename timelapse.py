@@ -436,6 +436,7 @@ def main():
                             notif_msg += stats_block
                             
                             # YouTube Upload
+                            video_id, video_url = None, None
                             if youtube_cfg.get("enabled", False):
                                 logger.info("YouTube upload is enabled. Starting upload...")
                                 
@@ -473,6 +474,24 @@ def main():
                                     notif_msg += f"\n\n⚠️ Error uploading to YouTube: {e}. Video saved on server."
                             else:
                                 notif_msg += f"\n\n💾 YouTube upload disabled. Video saved locally at: {video_path}"
+                                
+                            # Write video metadata file next to the video
+                            try:
+                                meta_path = os.path.splitext(video_path)[0] + ".json"
+                                meta_data = {
+                                    "date": today_str,
+                                    "total_frames": total_frames,
+                                    "duration": duration_str,
+                                    "weather_summary": weather_summary,
+                                    "youtube_id": video_id,
+                                    "youtube_url": video_url,
+                                    "created_at": datetime.now().astimezone().isoformat()
+                                }
+                                with open(meta_path, "w", encoding="utf-8") as meta_f:
+                                    json.dump(meta_data, meta_f, indent=2)
+                                logger.info(f"Saved video metadata to {meta_path}")
+                            except Exception as meta_err:
+                                logger.error(f"Failed to write video metadata: {meta_err}")
                                 
                             # Send final push notification with embedded first archived frame image
                             send_notification(

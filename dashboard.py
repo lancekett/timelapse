@@ -16,6 +16,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("dashboard")
 
+VERSION = os.environ.get("APP_VERSION", "1.0.0")
 PORT = 8000
 CONFIG_FILE = "config.json"
 STATUS_FILE = "status.json"
@@ -370,7 +371,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
     <div class="container">
         <header>
             <div class="logo-section">
-                <h1>Timelapse Control Center</h1>
+                <h1>Timelapse Control Center <span style="font-size: 0.875rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-card); border: 1px solid var(--border-color); padding: 0.15rem 0.5rem; border-radius: 6px; margin-left: 0.75rem; vertical-align: middle; opacity: 0.85;">v{version}</span></h1>
                 <p>Solar Scheduling & Video Pipeline Monitor</p>
             </div>
             <div class="system-badges">
@@ -586,7 +587,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 </body>
 </html>
 """
-        self.wfile.write(html.encode("utf-8"))
+        self.wfile.write(html.replace("{version}", VERSION).encode("utf-8"))
 
     def serve_status(self):
         self.send_response(200)
@@ -619,6 +620,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         
         # Compile payload
         payload = {
+            "version": VERSION,
             "daemon_running": daemon_running,
             "camera_online": camera_online,
             "disk_space": get_disk_space(),

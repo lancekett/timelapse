@@ -19,9 +19,9 @@ logger = logging.getLogger("dashboard")
 
 VERSION = os.environ.get("APP_VERSION", "1.0.0")
 PORT = 8000
-CONFIG_FILE = "config.json"
-STATUS_FILE = "status.json"
-LOG_FILE = "timelapse.log"
+CONFIG_FILE = "/config/config.json" if os.path.exists("/config") else "config.json"
+STATUS_FILE = "/config/status.json" if os.path.exists("/config") else "status.json"
+LOG_FILE = "/config/timelapse.log" if os.path.exists("/config") else "timelapse.log"
 
 
 def get_disk_space():

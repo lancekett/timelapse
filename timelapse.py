@@ -16,6 +16,10 @@ import youtube_uploader
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("timelapse")
 
+LOG_FILE = "/config/timelapse.log" if os.path.exists("/config") else "timelapse.log"
+CONFIG_FILE = "/config/config.json" if os.path.exists("/config") else "config.json"
+STATUS_FILE = "/config/status.json" if os.path.exists("/config") else "status.json"
+
 
 def setup_logging():
     """
@@ -36,10 +40,10 @@ def setup_logging():
     
     # File Handler
     try:
-        fh = logging.FileHandler("timelapse.log", encoding="utf-8")
+        fh = logging.FileHandler(LOG_FILE, encoding="utf-8")
         fh.setFormatter(formatter)
         logger.addHandler(fh)
-        logger.info("Logging configured. Writing to 'timelapse.log'")
+        logger.info(f"Logging configured. Writing to '{LOG_FILE}'")
     except Exception as e:
         logger.warning(f"Could not configure file logger: {e}")
 
@@ -49,7 +53,7 @@ def load_config():
     Load the config.json file.
     If parsing fails, returns None.
     """
-    config_path = "config.json"
+    config_path = CONFIG_FILE
     if not os.path.exists(config_path):
         logger.error(f"Configuration file {config_path} not found!")
         return None
@@ -71,7 +75,7 @@ def update_status_file(status_dict):
     Write current daemon state to a status.json file for the dashboard.
     """
     try:
-        with open("status.json", "w", encoding="utf-8") as f:
+        with open(STATUS_FILE, "w", encoding="utf-8") as f:
             json.dump(status_dict, f, indent=2)
     except Exception as e:
         logger.error(f"Failed to write status.json: {e}")

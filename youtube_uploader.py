@@ -12,8 +12,8 @@ from googleapiclient.errors import HttpError
 logger = logging.getLogger("timelapse")
 
 SCOPES = ["https://www.googleapis.com/auth/youtube.upload"]
-CLIENT_SECRETS_FILE = "client_secrets.json"
-TOKEN_FILE = "token.json"
+CLIENT_SECRETS_FILE = "/config/client_secrets.json" if os.path.exists("/config") else "client_secrets.json"
+TOKEN_FILE = "/config/token.json" if os.path.exists("/config") else "token.json"
 
 
 def get_authenticated_service():

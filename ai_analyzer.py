@@ -5,7 +5,7 @@ from google import genai
 
 logger = logging.getLogger("timelapse")
 
-GEMINI_KEY_FILE = "gemini_key.txt"
+GEMINI_KEY_FILE = "/config/gemini_key.txt" if os.path.exists("/config") else "gemini_key.txt"
 
 def load_gemini_api_key():
     """

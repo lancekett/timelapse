@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("catchup")
 
-CONFIG_FILE = "config.json"
+CONFIG_FILE = "/config/config.json" if os.path.exists("/config") else "config.json"
 
 def run_catchup():
     # Load config

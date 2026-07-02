@@ -78,7 +78,8 @@ def analyze_video_weather(video_path, weather_stats=None):
                 f"- Total Precipitation: {precip} {p_unit}\n\n"
                 f"Use this ground-truth data to ensure your visual description is highly accurate (for example, "
                 f"if positive precipitation was recorded, match it with visual signs of rain or damp soil in the video). "
-                f"Do not mention the raw numbers or units themselves in your descriptive sentence."
+                f"Incorporate these temperature and precipitation metrics naturally into your descriptive sentence "
+                f"(for example: 'Partly cloudy with a morning shower, reaching a high of 72°F and low of 54°F with 0.12 in of rain')."
             )
             
         logger.debug(f"Gemini Prompt:\n{prompt}")

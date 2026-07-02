@@ -71,15 +71,24 @@ def analyze_video_weather(video_path, weather_stats=None):
             t_unit = weather_stats.get("temp_unit", "°F")
             p_unit = weather_stats.get("precip_unit", "in")
             
-            prompt += (
-                f"\n\nFor context, the actual recorded meteorological stats for this day were:\n"
-                f"- High Temperature: {max_temp}{t_unit}\n"
-                f"- Low Temperature: {min_temp}{t_unit}\n"
-                f"- Total Precipitation: {precip} {p_unit}\n\n"
-                f"Use this ground-truth data to ensure your visual description is highly accurate (for example, "
-                f"if positive precipitation was recorded, match it with visual signs of rain or damp soil in the video). "
-                f"Incorporate these temperature and precipitation metrics naturally into your descriptive sentence "
-                f"(for example: 'Partly cloudy with a morning shower, reaching a high of 72°F and low of 54°F with 0.12 in of rain')."
+            rain_str = f"{precip:.2f} {p_unit}" if isinstance(precip, (int, float)) else f"{precip} {p_unit}"
+            max_temp_str = f"{max_temp}{t_unit}" if max_temp is not None else "N/A"
+            min_temp_str = f"{min_temp}{t_unit}" if min_temp is not None else "N/A"
+            
+            prompt = (
+                "Analyze this timelapse video of a farm and write a weather summary. "
+                "You must output a single descriptive sentence about the weather progression (matching visual signs "
+                "in the video), followed by a 3-line stats block. Do not include any markdown formatting "
+                "or additional commentary.\n\n"
+                "Desired Output Format:\n"
+                "<Descriptive sentence about weather progression>\n"
+                f"High Temperature: {max_temp_str}\n"
+                f"Low Temperature: {min_temp_str}\n"
+                f"Total Precipitation: {rain_str}\n\n"
+                "Ground-truth weather stats to use:\n"
+                f"- High: {max_temp_str}\n"
+                f"- Low: {min_temp_str}\n"
+                f"- Rain: {rain_str}"
             )
             
         logger.debug(f"Gemini Prompt:\n{prompt}")

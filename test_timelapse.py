@@ -6,7 +6,7 @@ from datetime import datetime, time, timezone, timedelta
 
 # Import modules to test
 from scheduler import Sun, TimelapseScheduler
-from compiler import archive_midday_frames, extract_time_from_filename
+from compiler import archive_midday_frames, extract_time_from_filename, process_end_of_day
 
 
 class TestTimelapseScheduler(unittest.TestCase):
@@ -266,6 +266,92 @@ class TestWeather(unittest.TestCase):
         self.assertIn("longitude=-123.01069", req.full_url)
         self.assertIn("start_date=2026-06-06", req.full_url)
         self.assertIn("end_date=2026-06-06", req.full_url)
+
+
+class TestProcessEndOfDay(unittest.TestCase):
+    def setUp(self):
+        self.day_dir = "./temp_test_day"
+        self.archive_dir = "./temp_test_archive"
+        self.video_dir = "./temp_test_videos"
+        os.makedirs(self.day_dir, exist_ok=True)
+        os.makedirs(self.archive_dir, exist_ok=True)
+        os.makedirs(self.video_dir, exist_ok=True)
+        
+        # Create dummy frames
+        for i in range(5):
+            filename = f"image_20260601_120{i}00.jpg"
+            with open(os.path.join(self.day_dir, filename), "w") as f:
+                f.write("dummy_frame")
+
+    def tearDown(self):
+        for d in (self.day_dir, self.archive_dir, self.video_dir):
+            if os.path.exists(d):
+                shutil.rmtree(d)
+
+    @unittest.mock.patch('compiler.compile_video')
+    def test_process_end_of_day_keep_all(self, mock_compile):
+        mock_compile.return_value = True
+        
+        # Simulate video file creation
+        video_path = os.path.join(self.video_dir, "timelapse_2026-06-01.mp4")
+        with open(video_path, "wb") as f:
+            f.write(b"dummy_video_content")
+            
+        success, v_path, archive_frame, total_frames = process_end_of_day(
+            day_dir=self.day_dir,
+            archive_dir=self.archive_dir,
+            video_dir=self.video_dir,
+            target_date_str="2026-06-01",
+            fps=30,
+            cleanup_mode="keep_all"
+        )
+        
+        self.assertTrue(success)
+        self.assertEqual(total_frames, 5)
+        self.assertTrue(os.path.exists(self.day_dir), "day_dir should be retained in keep_all mode")
+        self.assertTrue(os.path.exists(os.path.join(self.archive_dir, "2026-06-01")))
+
+    @unittest.mock.patch('compiler.compile_video')
+    def test_process_end_of_day_midday_archive(self, mock_compile):
+        mock_compile.return_value = True
+        
+        video_path = os.path.join(self.video_dir, "timelapse_2026-06-01.mp4")
+        with open(video_path, "wb") as f:
+            f.write(b"dummy_video_content")
+            
+        success, v_path, archive_frame, total_frames = process_end_of_day(
+            day_dir=self.day_dir,
+            archive_dir=self.archive_dir,
+            video_dir=self.video_dir,
+            target_date_str="2026-06-01",
+            fps=30,
+            cleanup_mode="midday_archive"
+        )
+        
+        self.assertTrue(success)
+        self.assertFalse(os.path.exists(self.day_dir), "day_dir should be deleted in midday_archive mode")
+        self.assertTrue(os.path.exists(os.path.join(self.archive_dir, "2026-06-01")))
+
+    @unittest.mock.patch('compiler.compile_video')
+    def test_process_end_of_day_delete_all(self, mock_compile):
+        mock_compile.return_value = True
+        
+        video_path = os.path.join(self.video_dir, "timelapse_2026-06-01.mp4")
+        with open(video_path, "wb") as f:
+            f.write(b"dummy_video_content")
+            
+        success, v_path, archive_frame, total_frames = process_end_of_day(
+            day_dir=self.day_dir,
+            archive_dir=self.archive_dir,
+            video_dir=self.video_dir,
+            target_date_str="2026-06-01",
+            fps=30,
+            cleanup_mode="delete_all"
+        )
+        
+        self.assertTrue(success)
+        self.assertFalse(os.path.exists(self.day_dir), "day_dir should be deleted in delete_all mode")
+        self.assertFalse(os.path.exists(os.path.join(self.archive_dir, "2026-06-01")), "archive dir should not be created in delete_all mode")
 
 
 if __name__ == "__main__":

@@ -536,6 +536,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
                             <label for="fps">Timelapse Video FPS</label>
                             <input type="number" id="fps" required min="1">
                         </div>
+                        <div class="form-group">
+                            <label for="cleanup_mode">Raw Photo Retention</label>
+                            <select id="cleanup_mode" style="width: 100%; padding: 0.6rem 0.75rem; background: var(--bg-dark); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 0.9rem;">
+                                <option value="keep_all">Keep All Photos</option>
+                                <option value="midday_archive">Keep Midday Archive Only</option>
+                                <option value="delete_all">Delete All Photos (Video Only)</option>
+                            </select>
+                        </div>
                         <button type="submit" class="btn">Apply Changes</button>
                     </form>
                 </div>
@@ -597,6 +605,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
                     document.getElementById("sunrise_offset_minutes").value = data.config.sunrise_offset_minutes || 0;
                     document.getElementById("sunset_offset_minutes").value = data.config.sunset_offset_minutes || 0;
                     document.getElementById("fps").value = data.config.fps || 30;
+                    if (document.activeElement.id !== "cleanup_mode") {
+                        document.getElementById("cleanup_mode").value = data.config.cleanup_mode || "keep_all";
+                    }
                 }
             } catch (err) {
                 console.error("Error fetching status:", err);
@@ -624,7 +635,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 longitude: parseFloat(document.getElementById("longitude").value),
                 sunrise_offset_minutes: parseInt(document.getElementById("sunrise_offset_minutes").value),
                 sunset_offset_minutes: parseInt(document.getElementById("sunset_offset_minutes").value),
-                fps: parseInt(document.getElementById("fps").value)
+                fps: parseInt(document.getElementById("fps").value),
+                cleanup_mode: document.getElementById("cleanup_mode").value
             };
             
             try {

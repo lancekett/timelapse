@@ -136,17 +136,20 @@ def compile_video(day_dir, video_path, fps=30):
                 logger.warning(f"Could not remove temporary file list {file_list_path}: {e}")
 
 
-def process_end_of_day(day_dir, archive_dir, video_dir, target_date_str, fps=30):
+def process_end_of_day(day_dir, archive_dir, video_dir, target_date_str, fps=30, cleanup_mode="keep_all", archive_midday_frames_count=60):
     """
     Coordinates end-of-day actions:
-    1. Archives midday frames.
+    1. Archives midday frames (if applicable).
     2. Compiles daily video.
-    3. Deletes raw folder if compilation succeeded.
+    3. Handles raw photo retention/cleanup based on cleanup_mode:
+       - 'keep_all': Preserves all raw frames in day_dir (no deletion).
+       - 'midday_archive': Preserves midday archive frames, deletes day_dir.
+       - 'delete_all': Deletes day_dir completely.
     Returns: (success, video_path, first_archive_frame_path, total_frames)
     """
-    logger.info(f"Starting end-of-day processing for {target_date_str}...")
+    logger.info(f"Starting end-of-day processing for {target_date_str} (cleanup_mode: {cleanup_mode})...")
     
-    # 0. Count raw frames before deletion
+    # 0. Count raw frames before any processing
     total_frames = 0
     if os.path.exists(day_dir):
         try:
@@ -154,11 +157,20 @@ def process_end_of_day(day_dir, archive_dir, video_dir, target_date_str, fps=30)
         except Exception as e:
             logger.error(f"Failed to count raw frames in {day_dir}: {e}")
             
-    # 1. Archive midday frames first
-    archived_frames = archive_midday_frames(day_dir, archive_dir, target_date_str)
+    # 1. Handle midday archiving or preview frame finding
+    archived_frames = []
     first_archive_frame_path = None
-    if archived_frames:
-        first_archive_frame_path = os.path.abspath(os.path.join(archive_dir, target_date_str, archived_frames[0]))
+    
+    if cleanup_mode in ("keep_all", "midday_archive"):
+        archived_frames = archive_midday_frames(day_dir, archive_dir, target_date_str, num_frames=archive_midday_frames_count)
+        if archived_frames:
+            first_archive_frame_path = os.path.abspath(os.path.join(archive_dir, target_date_str, archived_frames[0]))
+    
+    # If no archive frame path yet (e.g. delete_all or no midday frames), use the first available raw frame for preview notification
+    if not first_archive_frame_path and os.path.exists(day_dir):
+        raw_files = sorted([f for f in os.listdir(day_dir) if f.lower().endswith((".jpg", ".png"))])
+        if raw_files:
+            first_archive_frame_path = os.path.abspath(os.path.join(day_dir, raw_files[0]))
     
     # 2. Compile video
     os.makedirs(video_dir, exist_ok=True)
@@ -170,12 +182,20 @@ def process_end_of_day(day_dir, archive_dir, video_dir, target_date_str, fps=30)
     if success:
         # Double check file exists and is larger than 0 bytes
         if os.path.exists(video_path) and os.path.getsize(video_path) > 0:
-            logger.info(f"Video verified! Size: {os.path.getsize(video_path)} bytes. Cleaning up raw frames...")
-            try:
-                shutil.rmtree(day_dir)
-                logger.info(f"Successfully cleaned up raw directory {day_dir}")
-            except Exception as e:
-                logger.error(f"Failed to delete raw directory {day_dir}: {e}")
+            logger.info(f"Video verified! Size: {os.path.getsize(video_path)} bytes.")
+            
+            # 3. Handle raw frame retention / cleanup
+            if cleanup_mode == "keep_all":
+                logger.info(f"Retention mode is 'keep_all'. Retaining all {total_frames} raw frames in {day_dir}.")
+            elif cleanup_mode in ("midday_archive", "delete_all"):
+                logger.info(f"Retention mode is '{cleanup_mode}'. Cleaning up raw frames in {day_dir}...")
+                try:
+                    shutil.rmtree(day_dir)
+                    logger.info(f"Successfully cleaned up raw directory {day_dir}")
+                except Exception as e:
+                    logger.error(f"Failed to delete raw directory {day_dir}: {e}")
+            else:
+                logger.warning(f"Unknown cleanup_mode '{cleanup_mode}'. Defaulting to retaining raw frames in {day_dir}.")
         else:
             logger.error(f"Video file {video_path} is empty or missing! Skipping raw frame cleanup.")
             success = False

@@ -365,13 +365,18 @@ def main():
                     if os.path.exists(day_dir) and len(os.listdir(day_dir)) > 0:
                         logger.info(f"Capture window ended. Starting compilation for {today_str}...")
                         
+                        cleanup_mode = config.get("cleanup_mode", "keep_all")
+                        archive_midday_count = config.get("archive_midday_frames", 60)
+                        
                         # Trigger compilation & archival
                         comp_success, video_path, first_archive_frame_path, total_frames = process_end_of_day(
                             day_dir=day_dir,
                             archive_dir=archive_dir,
                             video_dir=video_dir,
                             target_date_str=today_str,
-                            fps=fps
+                            fps=fps,
+                            cleanup_mode=cleanup_mode,
+                            archive_midday_frames_count=archive_midday_count
                         )
                         
                         if comp_success:

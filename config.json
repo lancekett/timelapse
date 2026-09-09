@@ -9,6 +9,7 @@
   "archive_dir": "/data/timelapse/archive",
   "video_dir": "/data/timelapse/videos",
   "fps": 30,
+  "cleanup_mode": "keep_all",
   "notifications": {
     "provider": "ntfy",
     "ntfy_topic": "lance-timelapse-lwg-6835",
